@@ -28,12 +28,11 @@ configuration_setup() {
 	# Get repository
 	while true; do
 		GIT_REPO=$(whiptail --inputbox "Git repository clone link:" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3  < /dev/tty)
-		GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1
-		sleep 2
 		if [ "$?" = 1 ]; then
 			echo "Configuration setup cancelled."
 			exit 1
 		fi
+		stdbuf -oL \
 		{
 			echo "33"
 			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1
@@ -54,6 +53,7 @@ configuration_setup() {
 			echo "Configuration setup cancelled."
 			exit 1
 		fi
+		stdbuf -oL \
 		{
 			echo "33"
 			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" "$GIT_REPO_BRANCH" >/dev/null 2>&1
