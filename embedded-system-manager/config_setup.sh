@@ -18,10 +18,11 @@
 
 CONFIG_FILE="$(dirname "$BASH_SOURCE")/config"
 
-cd "$(dirname "$BASH_SOURCE")"
-
 #Configuration setup.
 configuration_setup() {
+	
+	# Save original directory to return to it later
+	ORIGINAL_DIR="$(pwd)"
 
 	SETUP_TITLE="Embedded System Manager Setup"
 
@@ -127,6 +128,8 @@ run_script=$run_script
 
 EOF
 
+	# Return to original directory
+	cd "$ORIGINAL_DIR"
 }
 
 configuration_setup

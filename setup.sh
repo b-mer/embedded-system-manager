@@ -33,11 +33,16 @@ if ! command -v git &> /dev/null; then
   exit 1
 fi
 
-cd "$(dirname "$BASH_SOURCE")"   
+# Save the original directory where the script was run
+SCRIPT_DIR="$(cd "$(dirname "$BASH_SOURCE")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Run configuration setup.
 chmod +x embedded-system-manager/config_setup.sh
 source embedded-system-manager/config_setup.sh
+
+# Ensure we're back in the script directory after config_setup
+cd "$SCRIPT_DIR"
 
 echo "Copying script directory to /opt directory..."
 
@@ -85,4 +90,7 @@ echo "Enabling and starting embedded-system-deployer.service..."
 systemctl enable embedded-system-deployer.service
 systemctl start embedded-system-deployer.service
 
-echo "Setup complete." 
+echo "Setup complete."
+
+# Return to the original directory where the script was first run
+cd "$SCRIPT_DIR"
