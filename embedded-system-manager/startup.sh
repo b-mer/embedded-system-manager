@@ -44,6 +44,13 @@ install_if_not_exist git
 # Load config file (basically works as a bash script in itself)
 source config
 
+# Install Cage Window Manager if needed
+if [ $run_in_cage -eq 1 ]; then
+  echo "--- INSTALLING CAGE FOR KIOSK MODE ---"
+  install_if_not_exist cage
+  install_if_not_exist wlroots
+fi
+
 echo "--- CHECKING FOR UPGRADES ---"
 
 # Run package updates
@@ -58,7 +65,18 @@ echo "--- UPDATING SCRIPTS FROM REPOSITORY ---"
 if [ $run_script -eq 1 ]; then
   echo "Startup complete, running script."
   cd $script_workspace
-  source main.*
+  
+  # Check if we should run in Cage Window Manager
+  if [ $run_in_cage -eq 1 ]; then
+    echo "Starting Cage..."
+    # Run the script within Cage
+    # Cage will run on the first available TTY
+    cage -- bash -c "source main.*"
+  else
+    # Run normally without Cage
+    source main.*
+  fi
+  
   cd /opt/embedded-system-manager
 else
   echo "Startup complete."

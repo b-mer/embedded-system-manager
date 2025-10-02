@@ -74,6 +74,13 @@ configuration_setup() {
 		fi
 	done
 
+	# Cage Window Manager flag
+	if whiptail --title "$SETUP_TITLE" --yesno "Do you want to run the program as a kiosk using Cage?" 8 60 3>&1 1>&2 2>&3 < /dev/tty; then
+		run_in_cage=1
+	else
+		run_in_cage=0
+	fi
+
 	# Turning on/off simple flags
 	choices=$(whiptail --title "$SETUP_TITLE" --checklist \
 		"Choose misc options (space to tick/untick):" 15 110 3 \
@@ -125,6 +132,11 @@ check_for_package_updates=$check_for_package_updates
 # 1 = Runs the repository script
 # 0 = Does not run the repository script at all
 run_script=$run_script
+
+# Cage Window Manager flag
+# 1 = Set up and run code in Cage Window Manager
+# 0 = Do not use Cage Window Manager
+run_in_cage=$run_in_cage
 
 EOF
 
