@@ -1,0 +1,16 @@
+repository_url=""
+
+# Leave as a blank string to by default clone from main/master
+repository_branch=""
+
+script_workspace="/scripts"
+
+# Package update flag
+# 1 = Check for the latest updates from raspbian repositories
+# 0 = Do not check for package updates
+check_for_package_updates=1
+
+# Run repository script flag
+# 1 = Runs the repository script
+# 0 = Does not run the repository script at all
+run_script=1

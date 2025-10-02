@@ -1,0 +1,13 @@
+[Unit]
+Description=Embedded System Deployer (from embedded-system-manager: https://github.com/b-mer/embedded-system-manager)
+After=network.target
+
+[Service]
+User=root
+Group=root
+Type=exec
+ExecStart=/opt/embedded-system-manager/startup.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
