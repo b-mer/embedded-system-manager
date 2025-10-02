@@ -25,11 +25,9 @@ configuration_setup() {
 
 	SETUP_TITLE="Embedded System Manager Setup"
 
-	
-
 	# Get repository
 	while true; do
-		GIT_REPO=$(whiptail --inputbox "Git repository clone link:" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3)
+		GIT_REPO=$(whiptail --inputbox "Git repository clone link:" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3  < /dev/tty)
 		if [ "$?" = 1 ]; then
 			echo "Configuration setup cancelled."
 			exit 1
@@ -40,16 +38,16 @@ configuration_setup() {
 			exit_code=$?
 			echo "100"
 			exit $exit_code
-		} | whiptail --gauge "Checking if repository can be accessed..." 6 50 0 
+		} | whiptail --gauge "Checking if repository can be accessed..." 6 50 0 < /dev/tty
 		if [ "${PIPESTATUS[0]}" -eq 0 ]; then
 			break
 		else
-			whiptail --msgbox "Can't access git repository!" --title "$SETUP_TITLE" 8 40
+			whiptail --msgbox "Can't access git repository!" --title "$SETUP_TITLE" 8 40 < /dev/tty
 		fi
 	done
 
 	while true; do
-		GIT_REPO_BRANCH=$(whiptail --inputbox "Branch name (leave blank to use default branch):" 10 40 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3)
+		GIT_REPO_BRANCH=$(whiptail --inputbox "Branch name (leave blank to use default branch):" 10 40 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
 		if [ "$?" = 1 ]; then
 			echo "Configuration setup cancelled."
 			exit 1
@@ -60,16 +58,16 @@ configuration_setup() {
 			exit_code=$?
 			echo "100"
 			exit $exit_code
-		} | whiptail --gauge "Checking if branch can be accessed..." 6 50 0 
+		} | whiptail --gauge "Checking if branch can be accessed..." 6 50 0 < /dev/tty
 		if [ "${PIPESTATUS[0]}" -eq 0 ] || [ -z "$GIT_REPO_BRANCH" ]; then
 			break
 		else
-			whiptail --msgbox "Can't access $GIT_REPO_BRANCH branch!" --title "$SETUP_TITLE" 8 40
+			whiptail --msgbox "Can't access $GIT_REPO_BRANCH branch!" --title "$SETUP_TITLE" 8 40 < /dev/tty
 		fi
 	done
 
 	while true; do
-		DEPLOY_LOCATION=$(whiptail --inputbox "Deploy path (where your repo will be cloned to):" 8 70 --title "$SETUP_TITLE" "/scripts" 3>&1 1>&2 2>&3)
+		DEPLOY_LOCATION=$(whiptail --inputbox "Deploy path (where your repo will be cloned to):" 8 70 --title "$SETUP_TITLE" "/scripts" 3>&1 1>&2 2>&3 < /dev/tty)
 		if [ "$?" = 1 ]; then
 		echo "Configuration setup cancelled."
 			exit 1
@@ -77,7 +75,7 @@ configuration_setup() {
 		if mkdir -p "$DEPLOY_LOCATION" &>/dev/null; then
 			break
 		else
-			whiptail --msgbox "Invalid path. Try again." 8 40
+			whiptail --msgbox "Invalid path. Try again." 8 40 < /dev/tty
 		fi
 	done
 
@@ -86,7 +84,7 @@ configuration_setup() {
 		"Choose misc options (space to tick/untick):" 15 110 3 \
 		"Full repo refresh" "Have the repository reclone itself rather than just git pull." OFF \
 		"Check for Package Updates" "Check for latest updates each boot using apt." OFF \
-		"Run repo script" "Run main.* on the repository directory." ON 3>&1 1>&2 2>&3)i
+		"Run repo script" "Run main.* on the repository directory." ON 3>&1 1>&2 2>&3 < /dev/tty)
 	if [ "$?" = 1 ]; then
 		echo "Configuration setup cancelled."
 		exit 1
