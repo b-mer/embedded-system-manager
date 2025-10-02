@@ -1,3 +1,4 @@
+# For repository
 repository_url=""
 
 # Leave as a blank string to by default clone from main/master
@@ -5,8 +6,16 @@ repository_branch=""
 
 script_workspace="/scripts"
 
+# Command to run the repository
+repo_run_command="source main.*"
+
+# Full repo refresh flag
+# 1 = Delete existing clone and clone repo again on boot
+# 0 = Just run git pull on boot
+full_repo_refresh=0
+
 # Package update flag
-# 1 = Check for the latest updates from raspbian repositories
+# 1 = Check for the latest updates from apt repositories
 # 0 = Do not check for package updates
 check_for_package_updates=1
 
@@ -14,3 +23,8 @@ check_for_package_updates=1
 # 1 = Runs the repository script
 # 0 = Does not run the repository script at all
 run_script=1
+
+# Cage Window Manager flag
+# 1 = Set up and run code in Cage Window Manager
+# 0 = Do not use Cage Window Manager
+run_in_cage=0

@@ -18,7 +18,7 @@
 
 CONFIG_FILE="$(dirname "$BASH_SOURCE")/config"
 
-#Configuration setup.
+# Configuration setup.
 configuration_setup() {
 	
 	# Save original directory to return to it later
@@ -74,6 +74,17 @@ configuration_setup() {
 		fi
 	done
 
+	# Get repository run command
+	REPO_RUN_COMMAND=$(whiptail --inputbox "Command to run the repository (leave blank for 'source main.*'):" 10 70 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+	if [ "$?" = 1 ]; then
+		echo "Configuration setup cancelled."
+		exit 1
+	fi
+	# Set default if blank
+	if [ -z "$REPO_RUN_COMMAND" ]; then
+		REPO_RUN_COMMAND="source main.*"
+	fi
+
 	# Cage Window Manager flag
 	if whiptail --title "$SETUP_TITLE" --yesno "Do you want to run the program as a kiosk using Cage?" 8 60 3>&1 1>&2 2>&3 < /dev/tty; then
 		run_in_cage=1
@@ -117,6 +128,9 @@ repository_url="$GIT_REPO"
 repository_branch="$GIT_REPO_BRANCH"
 
 script_workspace="$DEPLOY_LOCATION"
+
+# Command to run the repository
+repo_run_command="$REPO_RUN_COMMAND"
 
 # Full repo refresh flag
 # 1 = Delete existing clone and clone repo again on boot

@@ -66,15 +66,15 @@ if [ $run_script -eq 1 ]; then
   echo "Startup complete, running script."
   cd $script_workspace
   
-  # Check if we should run in Cage Window Manager
+  # Check if we should run in Cage
   if [ $run_in_cage -eq 1 ]; then
-    echo "Starting Cage..."
+    echo "Starting Cage Kiosk..."
     # Run the script within Cage
     # Cage will run on the first available TTY
-    cage -- bash -c "source main.*"
+    cage -- bash -c "$repo_run_command"
   else
     # Run normally without Cage
-    source main.*
+    eval "$repo_run_command"
   fi
   
   cd /opt/embedded-system-manager
