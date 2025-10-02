@@ -19,6 +19,29 @@ SETUP & INSTALLATION
 bash -c "$(curl -sL https://raw.githubusercontent.com/b-mer/embedded-system-manager/main/install.sh)"
 ```
 
+CAGE KIOSK MODE
+---------------
+
+Embedded System Manager can run your code in [Cage](https://github.com/cage-kiosk/cage). This allows you to have a kiosk setup.
+
+NOTE: With cage mode enabled, the script automatically handles display conflicts by stopping any existing display managers or window systems before launching.
+
+To enable Cage mode, select "Yes" when prompted during setup, or manually set `run_in_cage=1` in the config file.
+
+### CAGE AND TTY SESSIONS
+
+When Cage is running on TTY1, you can still access other virtual terminals for system administration or debugging.
+
+To switch to a different TTY:
+- Press Ctrl+Alt+F2 for TTY2
+- Press Ctrl+Alt+F3 for TTY3
+- etc.
+
+To return to the Cage kiosk on TTY1:
+- Press Ctrl+Alt+F1
+
+You can log in normally on these other TTYs or use SSH to access the system remotely. The Cage kiosk should continue running independently on TTY1.
+
 CONFIGURATION & DEBUGGING YOUR CODE
 -----------------------------------
 

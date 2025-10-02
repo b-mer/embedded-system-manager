@@ -39,6 +39,67 @@ install_if_not_exist() {
   apt-get install "$1" -y
 }
 
+# Clear all display managers and compositors to prepare for Cage takeover
+# This function gracefully terminates X11 and Wayland sessions before forcing
+clear_display_managers() {
+  echo "--- STOPPING CONFLICTING DISPLAY MANAGERS ---"
+  
+  # Stop all display manager services
+  systemctl list-units --type=service --state=running --no-pager --no-legend | \
+    awk '{print $1}' | \
+    grep -E '(dm\.service|display-manager)' | \
+    while read -r service; do
+      echo "Stopping $service..."
+      systemctl stop "$service" 2>/dev/null || true
+      systemctl disable "$service" 2>/dev/null || true
+    done
+  
+  # Gracefully terminate X servers using DISPLAY protocol
+  for display in $(ls /tmp/.X11-unix/* 2>/dev/null | sed 's|/tmp/.X11-unix/X||'); do
+    if [ -n "$display" ]; then
+      echo "Gracefully terminating X server on DISPLAY :$display..."
+      DISPLAY=:$display xdotool key --clearmodifiers Super_L+q 2>/dev/null || true
+      sleep 0.5
+      DISPLAY=:$display pkill -15 -f "X.*:$display" 2>/dev/null || true
+      sleep 1
+      DISPLAY=:$display pkill -9 -f "X.*:$display" 2>/dev/null || true
+    fi
+  done
+  
+  # Gracefully terminate Wayland compositors
+  for wayland_display in $(ls /run/user/*/wayland-* 2>/dev/null | grep -o 'wayland-[0-9]*'); do
+    if [ -n "$wayland_display" ]; then
+      echo "Gracefully terminating Wayland compositor on $wayland_display..."
+      WAYLAND_DISPLAY=$wayland_display wlr-randr --off 2>/dev/null || true
+      sleep 0.5
+    fi
+  done
+  
+  # Send SIGTERM to remaining Wayland processes, then SIGKILL if needed
+  ps aux | grep -i wayland | grep -v grep | awk '{print $2}' | while read -r pid; do
+    if [ -n "$pid" ]; then
+      kill -15 "$pid" 2>/dev/null || true
+    fi
+  done
+  sleep 1
+  ps aux | grep -i wayland | grep -v grep | awk '{print $2}' | xargs -r kill -9 2>/dev/null || true
+  
+  # Release DRM devices
+  if [ -d /dev/dri ]; then
+    echo "Releasing DRM devices..."
+    fuser -k -15 /dev/dri/* 2>/dev/null || true
+    sleep 1
+    fuser -k -9 /dev/dri/* 2>/dev/null || true
+  fi
+  
+  # Clear TTY1 for clean takeover
+  if [ -e /dev/tty1 ]; then
+    echo "Clearing TTY1..."
+    chvt 1 2>/dev/null || true
+    sleep 1
+  fi
+}
+
 install_if_not_exist git
 
 # Load config file (basically works as a bash script in itself)
@@ -49,6 +110,9 @@ if [ $run_in_cage -eq 1 ]; then
   echo "--- INSTALLING CAGE FOR KIOSK MODE ---"
   install_if_not_exist cage
   install_if_not_exist wlroots
+  
+  # Clear any existing display managers/compositors
+  clear_display_managers
 fi
 
 echo "--- CHECKING FOR UPGRADES ---"
