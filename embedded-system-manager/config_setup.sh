@@ -36,9 +36,7 @@ configuration_setup() {
 		{
 			echo "33"
 			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1
-			exit_code=$?
 			echo "100"
-			exit $exit_code
 		} | whiptail --gauge "Checking if repository can be accessed..." 6 50 0 < /dev/tty
 		if [ "${PIPESTATUS[0]}" -eq 0 ]; then
 			break
@@ -57,9 +55,7 @@ configuration_setup() {
 		{
 			echo "33"
 			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" "$GIT_REPO_BRANCH" >/dev/null 2>&1
-			exit_code=$?
 			echo "100"
-			exit $exit_code
 		} | whiptail --gauge "Checking if branch can be accessed..." 6 50 0 < /dev/tty
 		if [ "${PIPESTATUS[0]}" -eq 0 ] || [ -z "$GIT_REPO_BRANCH" ]; then
 			break
