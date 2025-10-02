@@ -14,4 +14,5 @@ rm -rf /tmp/embedded-system-manager
 git clone https://github.com/b-mer/embedded-system-manager.git /tmp/embedded-system-manager
 
 chmod +x /tmp/embedded-system-manager/setup.sh
-. /tmp/embedded-system-manager/setup.sh
+bash /tmp/embedded-system-manager/setup.sh
+rm -rf /tmp/embedded-system-manager/
