@@ -16,7 +16,7 @@ SETUP & INSTALLATION
 
 - Run:
 ```bash
-curl -sL https://raw.githubusercontent.com/b-mer/embedded-system-manager/main/install.sh | bash   
+bash -c "$(curl -sL https://raw.githubusercontent.com/b-mer/embedded-system-manager/main/install.sh)"
 ```
 
 CONFIGURATION & DEBUGGING YOUR CODE
