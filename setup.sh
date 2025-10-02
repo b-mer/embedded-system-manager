@@ -18,7 +18,7 @@
 
 # Check if root, if not, run with sudo.
 if [[ $EUID -ne 0 ]]; then
-  exec sudo "$0" "$@"
+  exec sudo "$BASH_SOURCE" "$@"
 fi
 
 # Check if whiptail is installed.
