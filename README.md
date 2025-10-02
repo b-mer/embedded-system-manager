@@ -1,7 +1,8 @@
 Embedded System Manager
 -----------------------
 
-This is a script for Debian/Raspbian embedded systems that automatically runs code from a git repository on startup, included with tools to make the process much easier to manage.
+This is a script for Debian/Raspbian embedded systems that automatically runs code from a git repository on startup, included with tools to make the process much easier to manage.  
+It requires a network connection to run and the systemd service wont start until a network connection is activated.
 
 DEPENDENCIES
 ------------
