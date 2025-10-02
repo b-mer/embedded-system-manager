@@ -13,7 +13,10 @@ SETUP & INSTALLATION
 
 - Set up SSH encryption keys (If your git repository is private).
 
-- WIP
+- Run:
+```bash
+curl -sL https://raw.githubusercontent.com/b-mer/embedded-system-manager/main/install.sh | bash   
+```
 
 CONFIGURATION & DEBUGGING
 -------------------------
