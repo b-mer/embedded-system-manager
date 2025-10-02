@@ -33,7 +33,8 @@ configuration_setup() {
 			exit 1
 		fi
 		# Run git command in background and show progress
-		GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1 &
+		tmpfile=$(mktemp)
+		(GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1; echo $? > "$tmpfile") &
 		git_pid=$!
 		{
 			for i in 0 10 20 30 40 50 60 70 80 90; do
@@ -44,13 +45,14 @@ configuration_setup() {
 					break
 				fi
 			done
-			wait $git_pid
-			exit_code=$?
+			while kill -0 $git_pid 2>/dev/null; do
+				sleep 0.1
+			done
 			echo 100
 			sleep 0.2
-			exit $exit_code
 		} | whiptail --gauge "Checking if repository can be accessed..." 6 50 0 < /dev/tty
-		exit_code=${PIPESTATUS[0]}
+		exit_code=$(cat "$tmpfile")
+		rm -f "$tmpfile"
 		if [ "$exit_code" -eq 0 ]; then
 			break
 		else
@@ -65,7 +67,8 @@ configuration_setup() {
 			exit 1
 		fi
 		# Run git command in background and show progress
-		GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" "$GIT_REPO_BRANCH" >/dev/null 2>&1 &
+		tmpfile=$(mktemp)
+		(GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" "$GIT_REPO_BRANCH" >/dev/null 2>&1; echo $? > "$tmpfile") &
 		git_pid=$!
 		{
 			for i in 0 10 20 30 40 50 60 70 80 90; do
@@ -76,13 +79,14 @@ configuration_setup() {
 					break
 				fi
 			done
-			wait $git_pid
-			exit_code=$?
+			while kill -0 $git_pid 2>/dev/null; do
+				sleep 0.1
+			done
 			echo 100
 			sleep 0.2
-			exit $exit_code
 		} | whiptail --gauge "Checking if branch can be accessed..." 6 50 0 < /dev/tty
-		exit_code=${PIPESTATUS[0]}
+		exit_code=$(cat "$tmpfile")
+		rm -f "$tmpfile"
 		if [ "$exit_code" -eq 0 ] || [ -z "$GIT_REPO_BRANCH" ]; then
 			break
 		else
