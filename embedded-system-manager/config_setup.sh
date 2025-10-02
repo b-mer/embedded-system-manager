@@ -33,10 +33,18 @@ configuration_setup() {
 			exit 1
 		fi
 		{
+			echo "0" ; sleep 0.1
+			echo "XXX"
 			echo "33"
+			echo "Validating repository..."
+			echo "XXX"
 			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1
 			exit_code=$?
+			echo "XXX"
 			echo "100"
+			echo "Done"
+			echo "XXX"
+			sleep 0.1
 			exit $exit_code
 		} | whiptail --gauge "Checking if repository can be accessed..." 6 50 0 < /dev/tty
 		if [ "${PIPESTATUS[0]}" -eq 0 ]; then
@@ -53,10 +61,18 @@ configuration_setup() {
 			exit 1
 		fi
 		{
+			echo "0" ; sleep 0.1
+			echo "XXX"
 			echo "33"
+			echo "Validating branch..."
+			echo "XXX"
 			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" "$GIT_REPO_BRANCH" >/dev/null 2>&1
 			exit_code=$?
+			echo "XXX"
 			echo "100"
+			echo "Done"
+			echo "XXX"
+			sleep 0.1
 			exit $exit_code
 		} | whiptail --gauge "Checking if branch can be accessed..." 6 50 0 < /dev/tty
 		if [ "${PIPESTATUS[0]}" -eq 0 ] || [ -z "$GIT_REPO_BRANCH" ]; then
