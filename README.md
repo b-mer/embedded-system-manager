@@ -57,3 +57,6 @@ TESTING EMBEDDED SYSTEM MANAGER
 
 With docker installed, you can clone the repository and run `test_setup.sh` then run `setup.sh` inside the container's home directory to test and debug this project if you wish to modify it.  
 `systemctl3.py` and `journalctl3.py` mimics systemd commands in the docker containers which this project would break without, and are from [docker-systemctl-replacement](https://github.com/gdraheim/docker-systemctl-replacement).
+
+There is also a test repository you can use this on: [embedded-system-manager-test-repo](https://github.com/b-mer/embedded-system-manager-test-repo) (works with the default config for the repository run command).  
+Git URL: `https://github.com/b-mer/embedded-system-manager-test-repo.git`
