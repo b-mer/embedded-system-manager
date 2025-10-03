@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Check if root
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
   echo "Please run as root."
   exit 1
 fi
@@ -44,10 +44,10 @@ install_if_not_exist() {
 clear_display_managers() {
   echo "--- STOPPING CONFLICTING DISPLAY MANAGERS ---"
   
-  # Stop all display manager services
+  # Stop all display manager services (more specific patterns to avoid false matches)
   systemctl list-units --type=service --state=running --no-pager --no-legend | \
     awk '{print $1}' | \
-    grep -E '(dm\.service|display-manager)' | \
+    grep -E '^(gdm|lightdm|sddm|xdm|kdm|lxdm|slim)\.service$|^display-manager\.service$' | \
     while read -r service; do
       echo "Stopping $service..."
       systemctl stop "$service" 2>/dev/null || true
@@ -56,17 +56,20 @@ clear_display_managers() {
   
   # Gracefully terminate X servers using DISPLAY protocol
   for display in $(ls /tmp/.X11-unix/* 2>/dev/null | sed 's|/tmp/.X11-unix/X||'); do
-    if [ -n "$display" ]; then
+    if [ -n "$display" ] && [ "$display" -ge 0 ] 2>/dev/null; then
       echo "Gracefully terminating X server on DISPLAY :$display..."
       DISPLAY=:$display xdotool key --clearmodifiers Super_L+q 2>/dev/null || true
       sleep 0.5
-      DISPLAY=:$display pkill -15 -f "X.*:$display" 2>/dev/null || true
+      # More specific pattern to avoid killing unrelated processes
+      pkill -15 -f "^/usr/lib/xorg/Xorg.*:$display" 2>/dev/null || true
+      pkill -15 -f "^X :$display" 2>/dev/null || true
       sleep 1
-      DISPLAY=:$display pkill -9 -f "X.*:$display" 2>/dev/null || true
+      pkill -9 -f "^/usr/lib/xorg/Xorg.*:$display" 2>/dev/null || true
+      pkill -9 -f "^X :$display" 2>/dev/null || true
     fi
   done
   
-  # Gracefully terminate Wayland compositors
+  # Gracefully terminate Wayland compositors (more specific patterns)
   for wayland_display in $(ls /run/user/*/wayland-* 2>/dev/null | grep -o 'wayland-[0-9]*'); do
     if [ -n "$wayland_display" ]; then
       echo "Gracefully terminating Wayland compositor on $wayland_display..."
@@ -75,14 +78,14 @@ clear_display_managers() {
     fi
   done
   
-  # Send SIGTERM to remaining Wayland processes, then SIGKILL if needed
-  ps aux | grep -i wayland | grep -v grep | awk '{print $2}' | while read -r pid; do
-    if [ -n "$pid" ]; then
-      kill -15 "$pid" 2>/dev/null || true
-    fi
+  # Send SIGTERM to specific Wayland compositor processes only
+  for compositor in weston mutter gnome-shell kwin_wayland sway; do
+    pkill -15 "^$compositor$" 2>/dev/null || true
   done
   sleep 1
-  ps aux | grep -i wayland | grep -v grep | awk '{print $2}' | xargs -r kill -9 2>/dev/null || true
+  for compositor in weston mutter gnome-shell kwin_wayland sway; do
+    pkill -9 "^$compositor$" 2>/dev/null || true
+  done
   
   # Release DRM devices
   if [ -d /dev/dri ]; then
@@ -105,7 +108,7 @@ install_if_not_exist git
 # Load config file (basically works as a bash script in itself)
 source config
 
-# Install Cage Window Manager if needed
+# Install the Cage wayland compositor if needed
 if [ $run_in_cage -eq 1 ]; then
   echo "--- INSTALLING CAGE FOR KIOSK MODE ---"
   install_if_not_exist cage
@@ -120,25 +123,58 @@ echo "--- CHECKING FOR UPGRADES ---"
 # Run package updates
 source upgrade_packages.sh
 
-echo "--- UPDATING SCRIPTS FROM REPOSITORY ---"
+echo "--- UPDATING DEPLOYMENT SOURCE ---"
 
-# Grab scripts from repository
-. install_repository.sh
+# Route to appropriate installer based on deployment source type
+case "$deployment_source_type" in
+	git)
+		echo "Using git repository deployment..."
+		. install_repository.sh
+		;;
+	binary)
+		echo "Using binary download deployment..."
+		. install_binary.sh
+		;;
+	package)
+		echo "Using package download deployment..."
+		. install_package.sh
+		;;
+	*)
+		echo "ERROR: Unknown deployment source type: $deployment_source_type"
+		echo "Valid options are: git, binary, package"
+		exit 1
+		;;
+esac
 
-# If run script flag set to true, start the repository program.
+# If run script flag set to true, start the deployed program.
 if [ $run_script -eq 1 ]; then
-  echo "Startup complete, running script."
-  cd $script_workspace
+  echo "Startup complete, running program."
+  
+  # Determine the command to run based on deployment type
+  case "$deployment_source_type" in
+    git)
+      cd "$script_workspace"
+      RUN_COMMAND="$repo_run_command"
+      ;;
+    binary)
+      cd "$script_workspace"
+      RUN_COMMAND="./$binary_name $binary_run_flags"
+      ;;
+    package)
+      # For packages, we don't change directory
+      RUN_COMMAND="$package_run_command"
+      ;;
+  esac
   
   # Check if we should run in Cage
   if [ $run_in_cage -eq 1 ]; then
     echo "Starting Cage Kiosk..."
-    # Run the script within Cage
+    # Run the program within Cage
     # Cage will run on the first available TTY
-    cage -- bash -c "$repo_run_command"
+    cage -- bash -c "$RUN_COMMAND"
   else
     # Run normally without Cage
-    eval "$repo_run_command"
+    eval "$RUN_COMMAND"
   fi
   
   cd /opt/embedded-system-manager

@@ -1,5 +1,5 @@
 #!/bin/bash
- 
+
 #    Embedded System Manager
 #    Copyright (C) 2025  Briar Merrett
 #
@@ -18,29 +18,55 @@
 
 
 # Check if root
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
 	echo "Please run as root."
 	exit 1
 fi
 
 if [ $full_repo_refresh -eq 1 ]; then
 	# Checks if script directory exists, if so, delete it to clear any older versions of the script
-	if [ -d $script_workspace ]; then
-		rm -rf $script_workspace
+	if [ -d "$script_workspace" ]; then
+		rm -rf "$script_workspace"
 	fi
 
 	# Make a new folder for the script
-	mkdir $script_workspace
+	mkdir "$script_workspace"
 
 	# Clone repository into script directory
+	echo "Cloning repository from $repository_url..."
 	if [[ "$repository_branch" == "" ]]; then
-		git clone $repository_url $script_workspace
+		if ! git clone "$repository_url" "$script_workspace"; then
+			echo "ERROR: Failed to clone repository."
+			exit 1
+		fi
 	else
-		git clone --branch $repository_branch $repository_url $script_workspace
+		if ! git clone --branch "$repository_branch" "$repository_url" "$script_workspace"; then
+			echo "ERROR: Failed to clone repository."
+			exit 1
+		fi
 	fi
 
 	# Set executable permission for main file
-	chmod +x $script_workspace/main.*
+	chmod +x "$script_workspace"/main.* 2>/dev/null || true
+	echo "Repository cloned successfully."
 else
-	git -C $script_workspace pull
+	# Pull updates, but keep existing version if pull fails
+	echo "Updating repository..."
+	if [ ! -d "$script_workspace/.git" ]; then
+		echo "ERROR: Repository directory exists but is not a git repository."
+		echo "Please delete $script_workspace and run setup again, or enable full_repo_refresh."
+		exit 1
+	fi
+	
+	if git -C "$script_workspace" pull; then
+		chmod +x "$script_workspace"/main.* 2>/dev/null || true
+		echo "Repository updated successfully."
+	else
+		echo "ERROR: Failed to pull updates. Keeping existing version."
+		# Only continue if we have a valid repository
+		if [ ! -f "$script_workspace"/main.* ]; then
+			echo "ERROR: No valid repository found to run."
+			exit 1
+		fi
+	fi
 fi

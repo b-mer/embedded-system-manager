@@ -1,18 +1,22 @@
 Embedded System Manager
 -----------------------
 
-This is a script for Debian/Raspbian embedded systems that automatically runs code from a git repository on startup, included with tools to make the process much easier to manage.  
-It requires a network connection to run and the systemd service wont start until a network connection is activated.
+This is a script for Debian/Raspbian embedded systems that automatically deploys and runs code on startup, with support for multiple deployment sources:
+- **Git repositories** - Clone/pull from any git repository
+- **Binary downloads** - Download and run standalone binaries
+- **Package installation** - Install .deb packages
+
+It requires a network connection to run and the systemd service won't start until a network connection is activated.
 
 DEPENDENCIES
 ------------
 
-This script depends on systemd services at the moment.
+This script depends on systemd services at the moment, and will automatically install `git` and `whiptail` if it can't be found.
 
 SETUP & INSTALLATION
 --------------------
 
-- Set up SSH encryption keys (If your git repository is private).  
+- Set up SSH encryption keys if you are using a private git repository.
   - NOTE: Encryption keys with passwords aren't supported at the moment
 
 - Run:
@@ -42,6 +46,36 @@ To return to the Cage kiosk on TTY1:
 - Press Ctrl+Alt+F1
 
 You can log in normally on these other TTYs or use SSH to access the system remotely. The Cage kiosk should continue running independently on TTY1.
+
+DEPLOYMENT SOURCE TYPES
+------------------------
+
+During setup, you'll be asked to choose a deployment source type:
+
+### Git Repository
+Clone and pull code from a git repository. Supports:
+- Public and private repositories (with SSH keys)
+- Branch selection
+- Full refresh or incremental pull updates
+- Automatic rollback on pull failures
+
+### Binary Download
+Download a standalone binary file. Supports:
+- Direct URL downloads
+- SHA256 checksum verification
+- Bearer token or basic authentication
+- Automatic executable permissions
+- Update on each boot or download once
+- Rollback protection (keeps previous version on download failure)
+
+### Package Installation
+Install .deb packages. Supports:
+- Direct URL downloads of .deb files
+- SHA256 checksum verification
+- Bearer token or basic authentication
+- Automatic dependency resolution
+- Update on each boot or install once
+- Rollback protection (keeps previous installation on failure)
 
 CONFIGURATION & DEBUGGING YOUR CODE
 -----------------------------------

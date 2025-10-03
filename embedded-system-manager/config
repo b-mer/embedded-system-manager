@@ -1,27 +1,76 @@
+# Deployment source type
+# Options: git, binary, package
+deployment_source_type="git"
+
+# ===== GIT REPOSITORY SETTINGS =====
 # For repository
 repository_url=""
 
 # Leave as a blank string to by default clone from main/master
 repository_branch=""
 
-script_workspace="/scripts"
-
-# Command to run the repository
-repo_run_command="source main.*"
-
 # Full repo refresh flag
 # 1 = Delete existing clone and clone repo again on boot
 # 0 = Just run git pull on boot
 full_repo_refresh=0
+
+# ===== BINARY DOWNLOAD SETTINGS =====
+# URL to download binary from
+binary_url=""
+
+# Name to save the binary as
+binary_name=""
+
+# SHA256 checksum for verification (optional, leave blank to skip)
+binary_checksum=""
+
+# Binary update check flag
+# 1 = Re-download binary on each boot
+# 0 = Download once and keep
+binary_update_check=0
+
+# Authentication (optional)
+binary_auth_token=""
+binary_auth_user=""
+binary_auth_pass=""
+
+# ===== PACKAGE DOWNLOAD SETTINGS =====
+# URL to download package from (currently supports .deb packages)
+package_url=""
+
+# SHA256 checksum for verification (optional, leave blank to skip)
+package_checksum=""
+
+# Package update check flag
+# 1 = Re-download package on each boot
+# 0 = Download once and keep
+package_update_check=0
+
+# Authentication (optional)
+package_auth_token=""
+package_auth_user=""
+package_auth_pass=""
+
+# ===== COMMON SETTINGS =====
+script_workspace="/scripts"
+
+# Command to run in the repository (git only)
+repo_run_command="source main.*"
+
+# Flags/arguments to pass when running the binary (binary only)
+binary_run_flags=""
+
+# Command/flags to run the installed package (package only)
+package_run_command=""
 
 # Package update flag
 # 1 = Check for the latest updates from apt repositories
 # 0 = Do not check for package updates
 check_for_package_updates=1
 
-# Run repository script flag
-# 1 = Runs the repository script
-# 0 = Does not run the repository script at all
+# Run program flag
+# 1 = Runs the deployed program
+# 0 = Does not run the program at all
 run_script=1
 
 # Cage Window Manager flag

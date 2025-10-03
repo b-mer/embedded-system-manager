@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Check if root
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
   echo "Please run as root."
   exit 1
 fi
@@ -28,4 +28,3 @@ if [ $check_for_package_updates -eq 1 ]; then
 else
     echo "check_for_package_updates flag disabled, skipping upgrade..."
 fi
-

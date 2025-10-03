@@ -39,7 +39,10 @@ cd "$SCRIPT_DIR"
 
 # Run configuration setup.
 chmod +x embedded-system-manager/config_setup.sh
-source embedded-system-manager/config_setup.sh
+if ! source embedded-system-manager/config_setup.sh; then
+  echo "Configuration setup failed or was cancelled."
+  exit 1
+fi
 
 # Ensure we're back in the script directory after config_setup
 cd "$SCRIPT_DIR"
@@ -55,16 +58,16 @@ sed -i 's/\r$//' /opt/embedded-system-manager/*
 echo "Making scripts executable..."
 
 # Set all scripts to root executable permissions
-chmod 744 /opt/embedded-system-manager/*
+chmod 744 /opt/embedded-system-manager/*.sh
 
 echo "Copying systemd embedded-system-deployer.service file to /etc/systemd/system directory..."
 
 # Installing embedded-system-deployer systemd service
 yes | cp -f embedded-system-deployer.service /etc/systemd/system
 
-echo "Setting appropiate permissions for embedded-system-deployer.service..."
+echo "Setting appropriate permissions for embedded-system-deployer.service..."
 
-# Setting systemd service to appropiate permissions
+# Setting systemd service to appropriate permissions
 chmod 664 /etc/systemd/system/embedded-system-deployer.service
 
 echo "Creating new command 'edman'..."
@@ -72,18 +75,30 @@ echo "Creating new command 'edman'..."
 # Installing edman command
 cp edman /usr/bin
 
-# Settng edman command to appropiate permissions
+# Setting edman command to appropriate permissions
 chmod 755 /usr/bin/edman
 
 
-echo "Cloning repository into $DEPLOY_LOCATION..."
+# Load the generated config to get deployment type
+source /opt/embedded-system-manager/config
 
-# Clone repository to deploy location
-script_workspace=$DEPLOY_LOCATION
-repository_url=$GIT_REPO
-repository_branch=$GIT_REPO_BRANCH
-full_repo_refresh=1
-source /opt/embedded-system-manager/install_repository.sh
+# Perform initial deployment based on type
+case "$deployment_source_type" in
+	git)
+		echo "Cloning repository into $DEPLOY_LOCATION..."
+		script_workspace="$DEPLOY_LOCATION"
+		repository_url="$GIT_REPO"
+		repository_branch="$GIT_REPO_BRANCH"
+		full_repo_refresh=1
+		source /opt/embedded-system-manager/install_repository.sh
+		;;
+	binary)
+		echo "Initial binary deployment will occur on first service start."
+		;;
+	package)
+		echo "Initial package installation will occur on first service start."
+		;;
+esac
 
 echo "Enabling and starting embedded-system-deployer.service..."
 # Enabling and starting embedded-system-deployer systemd service

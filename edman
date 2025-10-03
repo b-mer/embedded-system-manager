@@ -20,11 +20,11 @@ source /opt/embedded-system-manager/config
 
 case $1 in
   "reset")
-    if [ $(id -u) -ne 0 ]; then
+    if [ "$(id -u)" -ne 0 ]; then
         echo "This requires root privileges to run."
         exit 1
     fi
-    echo "Resetting embedded-system-deployer service. (scripts will reinstall)"
+    echo "Resetting embedded-system-deployer service..."
     systemctl restart embedded-system-deployer.service
     ;;
 
@@ -37,7 +37,7 @@ case $1 in
     ;;
 
   "stop")
-    if [ $(id -u) -ne 0 ]; then
+    if [ "$(id -u)" -ne 0 ]; then
         echo "This requires root privileges to run."
         exit 1
     fi
@@ -46,14 +46,14 @@ case $1 in
     ;;
 
   "info")
-    echo "reading from /opt/embedded-system-deployer/info.txt"
+    echo "reading from /opt/embedded-system-manager/info.txt"
     echo "-----------------------------------"
     cat /opt/embedded-system-manager/info.txt
     echo ""
     ;;
 
   "config")
-    if [ $(id -u) -ne 0 ]; then
+    if [ "$(id -u)" -ne 0 ]; then
         echo "This requires root privileges to run."
         exit 1
     fi
@@ -61,7 +61,7 @@ case $1 in
     ;;
 
   "configsetup")
-    if [ $(id -u) -ne 0 ]; then
+    if [ "$(id -u)" -ne 0 ]; then
         echo "This requires root privileges to run."
         exit 1
     fi
@@ -70,13 +70,22 @@ case $1 in
 
 
   "gotoscripts")
-    cd $script_workspace
+    echo "To navigate to scripts directory, run:"
+    echo "cd \"$script_workspace\""
+    ;;
+
+  "uninstall")
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "This requires root privileges to run."
+        exit 1
+    fi
+    exec /opt/embedded-system-manager/uninstall.sh
     ;;
 
   *)
     printf -- "-- Embedded System Manager --\n
     Arguments:\n
-    reset - Restarts the service and refreshes (reclone or pull) the repository.\n
+    reset - Restarts the service.\n
     status - Check systemctl status of the embedded-system-deployer service.\n
     output - Start displaying live output of the embedded-system-deployer service.\n
     stop - Stops the embedded-system-deployer service.\n
@@ -84,6 +93,6 @@ case $1 in
     config - Open embedded-system-manager config in default editor (${EDITOR:-nano}).\n
     configsetup - Re-run the config setup TUI that was ran on first setup.\n
     gotoscripts - Change current directory to the directory where the downloaded repository is stored.\n
+    uninstall - Completely remove Embedded System Manager from the system.\n
     help - Show this list of command arguments.\n\n" ;;
 esac
-
