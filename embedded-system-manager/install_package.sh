@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 #    Embedded System Manager
 #    Copyright (C) 2025  Briar Merrett
@@ -27,6 +28,15 @@ mkdir -p "$script_workspace"
 
 TEMP_PACKAGE="$script_workspace/.package.tmp"
 TEMP_EXTRACT="$script_workspace/.extract.tmp"
+
+# Cleanup function for temporary files
+cleanup() {
+	rm -f "$TEMP_PACKAGE"
+	rm -rf "$TEMP_EXTRACT"
+}
+
+# Set trap to cleanup on exit or interrupt
+trap cleanup EXIT INT TERM
 
 
 # Verify checksum if provided
@@ -67,48 +77,81 @@ install_deb_package() {
 	fi
 }
 
-# Download and install package
+# Download and install package with retry logic
 download_and_install_package() {
-	echo "Downloading package from $package_url..."
-	
-	local curl_args=(-fsSL -o "$TEMP_PACKAGE")
-	
-	if [ -n "$package_auth_token" ]; then
-		curl_args+=(-H "Authorization: Bearer $package_auth_token")
-	elif [ -n "$package_auth_user" ] && [ -n "$package_auth_pass" ]; then
-		curl_args+=(-u "$package_auth_user:$package_auth_pass")
-	fi
-	
-	curl_args+=("$package_url")
-	
-	if ! curl "${curl_args[@]}"; then
-		echo "ERROR: Failed to download package."
-		rm -f "$TEMP_PACKAGE"
+	# Use configured retry value, default to 3 if not set
+	local max_retries="${download_max_retries:-3}"
+	# Validate max_retries is a positive integer
+	if ! [[ "$max_retries" =~ ^[0-9]+$ ]] || [ "$max_retries" -lt 1 ]; then
+		echo "ERROR: Invalid download_max_retries value: $max_retries (must be positive integer)"
 		return 1
 	fi
+	local retry_count=0
 	
-	if ! verify_checksum "$TEMP_PACKAGE"; then
-		rm -f "$TEMP_PACKAGE"
-		return 1
-	fi
+	while [ $retry_count -lt $max_retries ]; do
+		if [ $retry_count -gt 0 ]; then
+			echo "Retry attempt $retry_count of $max_retries..."
+			sleep 2
+		fi
+		
+		echo "Downloading package from $package_url..."
+		
+		local curl_args=(-fsSL -o "$TEMP_PACKAGE")
+		
+		if [ -n "$package_auth_token" ]; then
+			curl_args+=(-H "Authorization: Bearer $package_auth_token")
+		elif [ -n "$package_auth_user" ] && [ -n "$package_auth_pass" ]; then
+			curl_args+=(-u "$package_auth_user:$package_auth_pass")
+		fi
+		
+		curl_args+=("$package_url")
+		
+		if ! curl "${curl_args[@]}"; then
+			echo "ERROR: Failed to download package."
+			rm -f "$TEMP_PACKAGE"
+			retry_count=$((retry_count + 1))
+			continue
+		fi
+		
+		if ! verify_checksum "$TEMP_PACKAGE"; then
+			echo "ERROR: Checksum verification failed."
+			rm -f "$TEMP_PACKAGE"
+			retry_count=$((retry_count + 1))
+			continue
+		fi
+		
+		# Detect package type from URL or file
+		if [[ "$package_url" == *.deb ]] || file "$TEMP_PACKAGE" | grep -q "Debian binary package"; then
+			if install_deb_package "$TEMP_PACKAGE"; then
+				rm -f "$TEMP_PACKAGE"
+				return 0
+			else
+				echo "ERROR: Package installation failed."
+				rm -f "$TEMP_PACKAGE"
+				retry_count=$((retry_count + 1))
+			fi
+		else
+			echo "ERROR: Unsupported package type. Currently only .deb packages are supported."
+			rm -f "$TEMP_PACKAGE"
+			return 1
+		fi
+	done
 	
-	# Detect package type from URL or file
-	if [[ "$package_url" == *.deb ]] || file "$TEMP_PACKAGE" | grep -q "Debian binary package"; then
-		install_deb_package "$TEMP_PACKAGE"
-		local result=$?
-		rm -f "$TEMP_PACKAGE"
-		return $result
+	echo "ERROR: Failed to download and install package after $max_retries attempts."
+	# Log the failure
+	LOG_DIR="/var/log/embedded-system-manager"
+	if mkdir -p "$LOG_DIR" 2>/dev/null && [ -w "$LOG_DIR" ]; then
+		echo "Package download/install failed after $max_retries attempts at $(date)" >> "$LOG_DIR/package.log" 2>/dev/null || true
 	else
-		echo "ERROR: Unsupported package type. Currently only .deb packages are supported."
-		rm -f "$TEMP_PACKAGE"
-		return 1
+		echo "WARNING: Could not write to log file at $LOG_DIR/package.log"
 	fi
+	return 1
 }
 
 # Check if package needs updating
 needs_update() {
 	# If update check is disabled and we have files in workspace, skip
-	if [ $package_update_check -eq 0 ] && [ "$(ls -A $script_workspace 2>/dev/null)" ]; then
+	if [ "$package_update_check" -eq 0 ] && [ "$(ls -A "$script_workspace" 2>/dev/null)" ]; then
 		return 1
 	fi
 	return 0
@@ -120,7 +163,7 @@ if needs_update; then
 		echo "Package installation complete."
 	else
 		echo "ERROR: Package installation failed."
-		if [ "$(ls -A $script_workspace 2>/dev/null)" ]; then
+		if [ "$(ls -A "$script_workspace" 2>/dev/null)" ]; then
 			echo "Keeping existing installation."
 		else
 			exit 1

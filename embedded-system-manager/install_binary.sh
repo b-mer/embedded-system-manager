@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 #    Embedded System Manager
 #    Copyright (C) 2025  Briar Merrett
@@ -28,6 +29,14 @@ mkdir -p "$script_workspace"
 BINARY_PATH="$script_workspace/$binary_name"
 TEMP_BINARY="$script_workspace/.${binary_name}.tmp"
 
+# Cleanup function for temporary files
+cleanup() {
+	rm -f "$TEMP_BINARY"
+}
+
+# Set trap to cleanup on exit or interrupt
+trap cleanup EXIT INT TERM
+
 
 # Verify checksum if provided
 verify_checksum() {
@@ -51,39 +60,66 @@ verify_checksum() {
 	fi
 }
 
-# Download binary
+# Download binary with retry logic
 download_binary() {
-	echo "Downloading binary from $binary_url..."
-	
-	local curl_args=(-fsSL -o "$TEMP_BINARY")
-	
-	if [ -n "$binary_auth_token" ]; then
-		curl_args+=(-H "Authorization: Bearer $binary_auth_token")
-	elif [ -n "$binary_auth_user" ] && [ -n "$binary_auth_pass" ]; then
-		curl_args+=(-u "$binary_auth_user:$binary_auth_pass")
-	fi
-	
-	curl_args+=("$binary_url")
-	
-	if curl "${curl_args[@]}"; then
-		if verify_checksum "$TEMP_BINARY"; then
-			chmod +x "$TEMP_BINARY"
-			mv "$TEMP_BINARY" "$BINARY_PATH"
-			echo "Binary downloaded and installed successfully."
-			return 0
-		else
-			rm -f "$TEMP_BINARY"
-			return 1
-		fi
-	else
-		echo "ERROR: Failed to download binary."
-		rm -f "$TEMP_BINARY"
+	# Use configured retry value, default to 3 if not set
+	local max_retries="${download_max_retries:-3}"
+	# Validate max_retries is a positive integer
+	if ! [[ "$max_retries" =~ ^[0-9]+$ ]] || [ "$max_retries" -lt 1 ]; then
+		echo "ERROR: Invalid download_max_retries value: $max_retries (must be positive integer)"
 		return 1
 	fi
+	local retry_count=0
+	
+	while [ $retry_count -lt $max_retries ]; do
+		if [ $retry_count -gt 0 ]; then
+			echo "Retry attempt $retry_count of $max_retries..."
+			sleep 2
+		fi
+		
+		echo "Downloading binary from $binary_url..."
+		
+		local curl_args=(-fsSL -o "$TEMP_BINARY")
+		
+		if [ -n "$binary_auth_token" ]; then
+			curl_args+=(-H "Authorization: Bearer $binary_auth_token")
+		elif [ -n "$binary_auth_user" ] && [ -n "$binary_auth_pass" ]; then
+			curl_args+=(-u "$binary_auth_user:$binary_auth_pass")
+		fi
+		
+		curl_args+=("$binary_url")
+		
+		if curl "${curl_args[@]}"; then
+			if verify_checksum "$TEMP_BINARY"; then
+				chmod +x "$TEMP_BINARY"
+				mv "$TEMP_BINARY" "$BINARY_PATH"
+				echo "Binary downloaded and installed successfully."
+				return 0
+			else
+				echo "ERROR: Checksum verification failed."
+				rm -f "$TEMP_BINARY"
+				retry_count=$((retry_count + 1))
+			fi
+		else
+			echo "ERROR: Failed to download binary."
+			rm -f "$TEMP_BINARY"
+			retry_count=$((retry_count + 1))
+		fi
+	done
+	
+	echo "ERROR: Failed to download binary after $max_retries attempts."
+	# Log the failure
+	LOG_DIR="/var/log/embedded-system-manager"
+	if mkdir -p "$LOG_DIR" 2>/dev/null && [ -w "$LOG_DIR" ]; then
+		echo "Binary download failed after $max_retries attempts at $(date)" >> "$LOG_DIR/binary.log" 2>/dev/null || true
+	else
+		echo "WARNING: Could not write to log file at $LOG_DIR/binary.log"
+	fi
+	return 1
 }
 
 # Main logic
-if [ -f "$BINARY_PATH" ] && [ $binary_update_check -eq 0 ]; then
+if [ -f "$BINARY_PATH" ] && [ "$binary_update_check" -eq 0 ]; then
 	echo "Binary already exists and update check is disabled. Skipping download."
 elif download_binary; then
 	echo "Binary installation complete."

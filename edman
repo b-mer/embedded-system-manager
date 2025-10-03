@@ -16,7 +16,18 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-source /opt/embedded-system-manager/config
+# Load config file with error handling
+if [ ! -f "/opt/embedded-system-manager/config" ]; then
+  echo "ERROR: Configuration file not found at /opt/embedded-system-manager/config"
+  echo "Please run setup again or check your installation."
+  exit 1
+fi
+
+if ! source "/opt/embedded-system-manager/config"; then
+  echo "ERROR: Failed to load configuration file."
+  echo "The config file may be corrupted. Please run 'edman configsetup' to regenerate it."
+  exit 1
+fi
 
 case $1 in
   "reset")
@@ -70,8 +81,41 @@ case $1 in
 
 
   "gotoscripts")
-    echo "To navigate to scripts directory, run:"
-    echo "cd \"$script_workspace\""
+    # Validate script_workspace is set and not empty
+    if [ -z "${script_workspace:-}" ]; then
+      echo "ERROR: script_workspace is not configured."
+      if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+        return 1
+      else
+        exit 1
+      fi
+    fi
+    
+    if [ -d "$script_workspace" ]; then
+      # Check if script is being sourced
+      if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+        # Script is being sourced, we can change directory
+        if ! cd "$script_workspace"; then
+          echo "ERROR: Failed to change directory to: $script_workspace"
+          return 1
+        fi
+        echo "Changed directory to: $script_workspace"
+      else
+        # Script is being executed, can't change parent shell's directory
+        echo "To change to scripts directory, run:"
+        echo "  source edman gotoscripts"
+        echo "or"
+        echo "  . edman gotoscripts"
+        exit 0
+      fi
+    else
+      echo "ERROR: Scripts directory does not exist: $script_workspace"
+      if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+        return 1
+      else
+        exit 1
+      fi
+    fi
     ;;
 
   "uninstall")

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 #    Embedded System Manager
 #    Copyright (C) 2025  Briar Merrett
@@ -35,17 +36,39 @@ fi
 
 # Save the original directory where the script was run
 SCRIPT_DIR="$(cd "$(dirname "$BASH_SOURCE")" && pwd)"
+
+# Verify script directory is accessible
+if [ ! -d "$SCRIPT_DIR" ]; then
+  echo "ERROR: Script directory is not accessible."
+  exit 1
+fi
+
 cd "$SCRIPT_DIR"
 
 # Run configuration setup.
 chmod +x embedded-system-manager/config_setup.sh
 if ! source embedded-system-manager/config_setup.sh; then
   echo "Configuration setup failed or was cancelled."
+  cd "$SCRIPT_DIR" 2>/dev/null || true
   exit 1
 fi
 
 # Ensure we're back in the script directory after config_setup
-cd "$SCRIPT_DIR"
+if [ ! -d "$SCRIPT_DIR" ]; then
+  echo "ERROR: Script directory no longer exists."
+  exit 1
+fi
+
+if ! cd "$SCRIPT_DIR"; then
+  echo "ERROR: Failed to return to script directory."
+  exit 1
+fi
+
+# Verify config file was created successfully
+if [ ! -f "embedded-system-manager/config" ]; then
+  echo "ERROR: Configuration file was not created."
+  exit 1
+fi
 
 echo "Copying script directory to /opt directory..."
 
@@ -80,17 +103,20 @@ chmod 755 /usr/bin/edman
 
 
 # Load the generated config to get deployment type
-source /opt/embedded-system-manager/config
+if ! source /opt/embedded-system-manager/config; then
+	echo "ERROR: Failed to load configuration file."
+	exit 1
+fi
 
 # Perform initial deployment based on type
 case "$deployment_source_type" in
 	git)
-		echo "Cloning repository into $DEPLOY_LOCATION..."
-		script_workspace="$DEPLOY_LOCATION"
-		repository_url="$GIT_REPO"
-		repository_branch="$GIT_REPO_BRANCH"
+		echo "Cloning repository into $script_workspace..."
 		full_repo_refresh=1
-		source /opt/embedded-system-manager/install_repository.sh
+		if ! source /opt/embedded-system-manager/install_repository.sh; then
+			echo "ERROR: Failed to clone repository during setup."
+			exit 1
+		fi
 		;;
 	binary)
 		echo "Initial binary deployment will occur on first service start."
@@ -108,4 +134,10 @@ systemctl start embedded-system-deployer.service
 echo "Setup complete."
 
 # Return to the original directory where the script was first run
-cd "$SCRIPT_DIR"
+if [ -d "$SCRIPT_DIR" ]; then
+  if ! cd "$SCRIPT_DIR"; then
+    echo "WARNING: Failed to return to original directory."
+  fi
+else
+  echo "WARNING: Original script directory no longer exists."
+fi

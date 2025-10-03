@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 #    Embedded System Manager
 #    Copyright (C) 2025  Briar Merrett
@@ -23,8 +24,32 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Run package upgrades
-if [ $check_for_package_updates -eq 1 ]; then
-    apt-get update && apt-get -y upgrade
+if [ "$check_for_package_updates" -eq 1 ]; then
+    echo "Updating package lists..."
+    LOG_DIR="/var/log/embedded-system-manager"
+    
+    if apt-get update; then
+        echo "Upgrading packages..."
+        if apt-get -y upgrade; then
+            echo "Package upgrade completed successfully."
+        else
+            echo "WARNING: Package upgrade failed. Continuing anyway..."
+            # Log the failure for monitoring
+            if mkdir -p "$LOG_DIR" 2>/dev/null && [ -w "$LOG_DIR" ]; then
+                echo "Package upgrade failed at $(date)" >> "$LOG_DIR/updates.log" 2>/dev/null || true
+            else
+                echo "WARNING: Could not write to log file at $LOG_DIR/updates.log"
+            fi
+        fi
+    else
+        echo "WARNING: Failed to update package lists. Skipping upgrade..."
+        # Log the failure for monitoring
+        if mkdir -p "$LOG_DIR" 2>/dev/null && [ -w "$LOG_DIR" ]; then
+            echo "Package list update failed at $(date)" >> "$LOG_DIR/updates.log" 2>/dev/null || true
+        else
+            echo "WARNING: Could not write to log file at $LOG_DIR/updates.log"
+        fi
+    fi
 else
     echo "check_for_package_updates flag disabled, skipping upgrade..."
 fi

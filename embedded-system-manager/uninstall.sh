@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 #    Embedded System Manager
 #    Copyright (C) 2025  Briar Merrett
@@ -17,7 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Check if root
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
 	echo "This requires root privileges to run."
 	exit 1
 fi
