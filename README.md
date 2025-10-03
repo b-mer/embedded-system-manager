@@ -12,7 +12,8 @@ This script depends on systemd services at the moment.
 SETUP & INSTALLATION
 --------------------
 
-- Set up SSH encryption keys (If your git repository is private).
+- Set up SSH encryption keys (If your git repository is private).  
+  - NOTE: Encryption keys with passwords aren't supported at the moment
 
 - Run:
 ```bash
