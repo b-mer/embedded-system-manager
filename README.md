@@ -8,7 +8,7 @@ This is a script for Debian/Raspbian embedded systems that automatically deploys
 
 It requires a network connection to run and the systemd service won't start until a network connection is activated.  
 
-NOTE: This is still an experimental tool and may need some improvements
+NOTE: This is still an experimental tool and may need some improvements.
 
 DEPENDENCIES
 ------------
