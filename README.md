@@ -6,7 +6,9 @@ This is a script for Debian/Raspbian embedded systems that automatically deploys
 - **Binary downloads** - Download and run standalone binaries
 - **Package installation** - Install .deb packages
 
-It requires a network connection to run and the systemd service won't start until a network connection is activated.
+It requires a network connection to run and the systemd service won't start until a network connection is activated.  
+
+NOTE: This is still an experimental tool and may need some improvements
 
 DEPENDENCIES
 ------------
