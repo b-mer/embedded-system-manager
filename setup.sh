@@ -2,7 +2,7 @@
 set -euo pipefail
 
 #    Embedded System Manager
-#    Copyright (C) 2025  Briar Merrett
+#    Copyright (C) 2026  Briar Merrett
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ fi
 echo "Copying script directory to /opt directory..."
 
 # Install embedded-system-manager
-yes | cp -rf embedded-system-manager /opt
+cp -rf embedded-system-manager /opt
 
 # Get rid of windows /r newlines to prevent bugs
 sed -i 's/\r$//' /opt/embedded-system-manager/*
@@ -86,7 +86,7 @@ chmod 744 /opt/embedded-system-manager/*.sh
 echo "Copying systemd embedded-system-deployer.service file to /etc/systemd/system directory..."
 
 # Installing embedded-system-deployer systemd service
-yes | cp -f embedded-system-deployer.service /etc/systemd/system
+cp -f embedded-system-deployer.service /etc/systemd/system
 
 echo "Setting appropriate permissions for embedded-system-deployer.service..."
 

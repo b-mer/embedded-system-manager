@@ -2,7 +2,7 @@
 set -euo pipefail
 
 #    Embedded System Manager
-#    Copyright (C) 2025  Briar Merrett
+#    Copyright (C) 2026  Briar Merrett
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
