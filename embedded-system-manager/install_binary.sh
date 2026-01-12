@@ -27,7 +27,7 @@ fi
 mkdir -p "$script_workspace"
 
 BINARY_PATH="$script_workspace/$binary_name"
-TEMP_BINARY="$script_workspace/.${binary_name}.tmp"
+TEMP_BINARY=$(mktemp "$script_workspace/.${binary_name}.XXXXXX")
 
 # Cleanup function for temporary files
 cleanup() {
@@ -43,6 +43,7 @@ verify_checksum() {
 	local file="$1"
 	
 	if [ -z "$binary_checksum" ]; then
+		echo "WARNING: No checksum provided. Deployment is unverified."
 		return 0
 	fi
 	
@@ -73,8 +74,9 @@ download_binary() {
 	
 	while [ $retry_count -lt $max_retries ]; do
 		if [ $retry_count -gt 0 ]; then
-			echo "Retry attempt $retry_count of $max_retries..."
-			sleep 2
+			local delay=$((2 ** retry_count))
+			echo "Retry attempt $retry_count of $max_retries... Sleeping ${delay}s"
+			sleep $delay
 		fi
 		
 		echo "Downloading binary from $binary_url..."

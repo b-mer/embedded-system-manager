@@ -16,47 +16,56 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Load config file with error handling
-if [ ! -f "/opt/embedded-system-manager/config" ]; then
-  echo "ERROR: Configuration file not found at /opt/embedded-system-manager/config"
-  echo "Please run setup again or check your installation."
-  exit 1
-fi
+# Function to check for root privileges
+check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This command requires root privileges. Please run with sudo."
+    exit 1
+  fi
+}
 
-if ! source "/opt/embedded-system-manager/config"; then
-  echo "ERROR: Failed to load configuration file."
-  echo "The config file may be corrupted. Please run 'edman configsetup' to regenerate it."
-  exit 1
-fi
+# Function to load config file with error handling
+load_config() {
+  if [ "$(id -u)" -eq 0 ]; then
+    if [ ! -f "/opt/embedded-system-manager/config" ]; then
+      echo "ERROR: Configuration file not found at /opt/embedded-system-manager/config"
+      echo "Please run setup again or check your installation."
+      exit 1
+    fi
+
+    if ! source "/opt/embedded-system-manager/config"; then
+      echo "ERROR: Failed to load configuration file."
+      echo "The config file may be corrupted. Please run 'edman configsetup' to regenerate it."
+      exit 1
+    fi
+  fi
+}
 
 case $1 in
   "reset")
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "This requires root privileges to run."
-        exit 1
-    fi
+    check_root
     echo "Resetting embedded-system-deployer service..."
     systemctl restart embedded-system-deployer.service
     ;;
 
   "status")
+    check_root
     systemctl status embedded-system-deployer.service
     ;;
 
   "output")
+    check_root
     journalctl --follow -u embedded-system-deployer.service
     ;;
 
   "stop")
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "This requires root privileges to run."
-        exit 1
-    fi
+    check_root
     echo "Stopped embedded-system-deployer service."
     systemctl stop embedded-system-deployer.service
     ;;
 
   "info")
+    check_root
     echo "reading from /opt/embedded-system-manager/info.txt"
     echo "-----------------------------------"
     cat /opt/embedded-system-manager/info.txt
@@ -64,23 +73,35 @@ case $1 in
     ;;
 
   "config")
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "This requires root privileges to run."
-        exit 1
-    fi
+    check_root
+    load_config
     ${EDITOR:-nano} /opt/embedded-system-manager/config
     ;;
 
   "configsetup")
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "This requires root privileges to run."
-        exit 1
-    fi
+    check_root
     exec /opt/embedded-system-manager/config_setup.sh
     ;;
 
 
   "gotoscripts")
+    if [ ! -f "/opt/embedded-system-manager/paths.conf" ]; then
+      echo "ERROR: Paths configuration file not found at /opt/embedded-system-manager/paths.conf"
+      if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+        return 1
+      else
+        exit 1
+      fi
+    fi
+
+    if ! source "/opt/embedded-system-manager/paths.conf"; then
+      echo "ERROR: Failed to load paths configuration file."
+      if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+        return 1
+      else
+        exit 1
+      fi
+    fi
     # Validate script_workspace is set and not empty
     if [ -z "${script_workspace:-}" ]; then
       echo "ERROR: script_workspace is not configured."
@@ -119,10 +140,8 @@ case $1 in
     ;;
 
   "uninstall")
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "This requires root privileges to run."
-        exit 1
-    fi
+    check_root
+    load_config
     exec /opt/embedded-system-manager/uninstall.sh
     ;;
 

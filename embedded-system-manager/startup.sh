@@ -43,8 +43,7 @@ if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
   exit 1
 fi
 
-# Update mirrors before running package installs
-apt-get update
+# Update mirrors before running package installs if needed
 
 # Install if not exist function yoinked from stack exchange at https://codereview.stackexchange.com/questions/262937/installing-packages-if-they-dont-exist-in-bash
 install_if_not_exist() {
@@ -54,6 +53,12 @@ install_if_not_exist() {
       return 0
     fi
   fi
+
+  echo "Package $1 missing. Updating package lists..."
+  if ! apt-get update; then
+    echo "WARNING: apt-get update failed. Attempting to install $1 anyway..."
+  fi
+
   if apt-get install "$1" -y; then
     return 0
   else
@@ -300,6 +305,30 @@ if [ "$run_script" -eq 1 ]; then
   case "$deployment_source_type" in
     git)
       cd "$script_workspace"
+
+      # Check for wildcards to prevent multiple files being sourced/executed
+      if [[ "$repo_run_command" == *"*"* ]]; then
+        echo "ERROR: repo_run_command contains wildcards (*), which are not allowed: $repo_run_command"
+        exit 1
+      fi
+
+      # Verify the file referenced in repo_run_command exists before attempting to source or execute it
+      if [[ "$repo_run_command" =~ ^source\ + ]]; then
+        # Extract the file path to be sourced
+        REPO_FILE=$(echo "$repo_run_command" | awk '{print $2}')
+        if [ ! -f "$REPO_FILE" ]; then
+          echo "ERROR: Source file not found: $script_workspace/$REPO_FILE"
+          exit 1
+        fi
+      elif [[ "$repo_run_command" =~ ^\./ ]] || [ -f "$(echo "$repo_run_command" | awk '{print $1}')" ]; then
+        # Extract the file path to be executed
+        REPO_FILE=$(echo "$repo_run_command" | awk '{print $1}')
+        if [ ! -f "$REPO_FILE" ]; then
+          echo "ERROR: File referenced in repo_run_command not found: $script_workspace/$REPO_FILE"
+          exit 1
+        fi
+      fi
+
       RUN_COMMAND="$repo_run_command"
       ;;
     binary)

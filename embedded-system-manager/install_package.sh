@@ -26,13 +26,11 @@ fi
 # Create workspace directory if it doesn't exist
 mkdir -p "$script_workspace"
 
-TEMP_PACKAGE="$script_workspace/.package.tmp"
-TEMP_EXTRACT="$script_workspace/.extract.tmp"
+TEMP_PACKAGE=$(mktemp "$script_workspace/.package.XXXXXX")
 
 # Cleanup function for temporary files
 cleanup() {
 	rm -f "$TEMP_PACKAGE"
-	rm -rf "$TEMP_EXTRACT"
 }
 
 # Set trap to cleanup on exit or interrupt
@@ -44,6 +42,7 @@ verify_checksum() {
 	local file="$1"
 	
 	if [ -z "$package_checksum" ]; then
+		echo "WARNING: No checksum provided. Deployment is unverified."
 		return 0
 	fi
 	
@@ -72,13 +71,13 @@ install_deb_package() {
 	else
 		echo "ERROR: Failed to install .deb package."
 		echo "Attempting to fix dependencies..."
-		apt-get install -f -y
+		apt-get update && apt-get install -f -y
 		return 1
 	fi
 }
 
-# Download and install package with retry logic
-download_and_install_package() {
+# Download package with retry logic
+download_package() {
 	# Use configured retry value, default to 3 if not set
 	local max_retries="${download_max_retries:-3}"
 	# Validate max_retries is a positive integer
@@ -90,8 +89,9 @@ download_and_install_package() {
 	
 	while [ $retry_count -lt $max_retries ]; do
 		if [ $retry_count -gt 0 ]; then
-			echo "Retry attempt $retry_count of $max_retries..."
-			sleep 2
+			local delay=$((2 ** retry_count))
+			echo "Retry attempt $retry_count of $max_retries... Sleeping ${delay}s"
+			sleep $delay
 		fi
 		
 		echo "Downloading package from $package_url..."
@@ -106,42 +106,26 @@ download_and_install_package() {
 		
 		curl_args+=("$package_url")
 		
-		if ! curl "${curl_args[@]}"; then
-			echo "ERROR: Failed to download package."
-			rm -f "$TEMP_PACKAGE"
-			retry_count=$((retry_count + 1))
-			continue
-		fi
-		
-		if ! verify_checksum "$TEMP_PACKAGE"; then
-			echo "ERROR: Checksum verification failed."
-			rm -f "$TEMP_PACKAGE"
-			retry_count=$((retry_count + 1))
-			continue
-		fi
-		
-		# Detect package type from URL or file
-		if [[ "$package_url" == *.deb ]] || file "$TEMP_PACKAGE" | grep -q "Debian binary package"; then
-			if install_deb_package "$TEMP_PACKAGE"; then
-				rm -f "$TEMP_PACKAGE"
+		if curl "${curl_args[@]}"; then
+			if verify_checksum "$TEMP_PACKAGE"; then
 				return 0
 			else
-				echo "ERROR: Package installation failed."
+				echo "ERROR: Checksum verification failed."
 				rm -f "$TEMP_PACKAGE"
 				retry_count=$((retry_count + 1))
 			fi
 		else
-			echo "ERROR: Unsupported package type. Currently only .deb packages are supported."
+			echo "ERROR: Failed to download package."
 			rm -f "$TEMP_PACKAGE"
-			return 1
+			retry_count=$((retry_count + 1))
 		fi
 	done
 	
-	echo "ERROR: Failed to download and install package after $max_retries attempts."
+	echo "ERROR: Failed to download package after $max_retries attempts."
 	# Log the failure
 	LOG_DIR="/var/log/embedded-system-manager"
 	if mkdir -p "$LOG_DIR" 2>/dev/null && [ -w "$LOG_DIR" ]; then
-		echo "Package download/install failed after $max_retries attempts at $(date)" >> "$LOG_DIR/package.log" 2>/dev/null || true
+		echo "Package download failed after $max_retries attempts at $(date)" >> "$LOG_DIR/package.log" 2>/dev/null || true
 	else
 		echo "WARNING: Could not write to log file at $LOG_DIR/package.log"
 	fi
@@ -159,10 +143,28 @@ needs_update() {
 
 # Main logic
 if needs_update; then
-	if download_and_install_package; then
-		echo "Package installation complete."
+	if download_package; then
+		# Detect package type from URL or file
+		if [[ "$package_url" == *.deb ]] || file "$TEMP_PACKAGE" | grep -q "Debian binary package"; then
+			if install_deb_package "$TEMP_PACKAGE"; then
+				echo "Package installation complete."
+				rm -f "$TEMP_PACKAGE"
+			else
+				echo "ERROR: Package installation failed."
+				rm -f "$TEMP_PACKAGE"
+				if [ "$(ls -A "$script_workspace" 2>/dev/null)" ]; then
+					echo "Keeping existing installation."
+				else
+					exit 1
+				fi
+			fi
+		else
+			echo "ERROR: Unsupported package type. Currently only .deb packages are supported."
+			rm -f "$TEMP_PACKAGE"
+			exit 1
+		fi
 	else
-		echo "ERROR: Package installation failed."
+		echo "ERROR: Package download failed."
 		if [ "$(ls -A "$script_workspace" 2>/dev/null)" ]; then
 			echo "Keeping existing installation."
 		else
