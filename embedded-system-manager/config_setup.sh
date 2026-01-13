@@ -38,39 +38,55 @@ configuration_setup() {
 	# Save original directory to return to it later
 	ORIGINAL_DIR="$(pwd)"
 
+	# Try to source existing config
+	if [ -f "$CONFIG_FILE" ]; then
+		# shellcheck disable=SC1090
+		source "$CONFIG_FILE"
+	fi
+	if [ -f "$PATHS_FILE" ]; then
+		# shellcheck disable=SC1090
+		source "$PATHS_FILE"
+	fi
+
+	# Initialize all variables to existing values or defaults
+	DEPLOYMENT_TYPE="${deployment_source_type:-git}"
+	GIT_REPO="${repository_url:-}"
+	GIT_REPO_BRANCH="${repository_branch:-}"
+	BINARY_URL="${binary_url:-}"
+	BINARY_NAME="${binary_name:-}"
+	BINARY_CHECKSUM="${binary_checksum:-}"
+	BINARY_UPDATE_CHECK="${binary_update_check:-0}"
+	BINARY_AUTH_TOKEN="${binary_auth_token:-}"
+	BINARY_AUTH_USER="${binary_auth_user:-}"
+	BINARY_AUTH_PASS="${binary_auth_pass:-}"
+	PACKAGE_URL="${package_url:-}"
+	PACKAGE_CHECKSUM="${package_checksum:-}"
+	PACKAGE_UPDATE_CHECK="${package_update_check:-0}"
+	PACKAGE_AUTH_TOKEN="${package_auth_token:-}"
+	PACKAGE_AUTH_USER="${package_auth_user:-}"
+	PACKAGE_AUTH_PASS="${package_auth_pass:-}"
+	DEPLOY_LOCATION="${script_workspace:-/scripts}"
+	REPO_RUN_COMMAND="${repo_run_command:-}"
+	BINARY_RUN_FLAGS="${binary_run_flags:-}"
+	PACKAGE_RUN_COMMAND="${package_run_command:-}"
+	run_in_cage="${run_in_cage:-0}"
+	full_repo_refresh="${full_repo_refresh:-0}"
+	check_for_package_updates="${check_for_package_updates:-0}"
+	run_script="${run_script:-1}"
+	GIT_TIMEOUT="${git_timeout:-300}"
+	DOWNLOAD_MAX_RETRIES="${download_max_retries:-3}"
+
 	# Select deployment source type
-	DEPLOYMENT_TYPE=$(whiptail --title "$SETUP_TITLE" --menu "Choose deployment source type:" 15 60 3 \
+	DEPLOYMENT_TYPE=$(whiptail --title "$SETUP_TITLE" --default-item "$DEPLOYMENT_TYPE" --menu "Choose deployment source type:" 15 60 3 \
 		"git" "Git repository (clone/pull)" \
 		"binary" "Binary file download" \
 		"package" "Package download (.deb)" \
 		3>&1 1>&2 2>&3 < /dev/tty)
-	
-	if [ "$?" = 1 ]; then
-		echo "Configuration setup cancelled."
-		exit 1
-	fi
-
-	# Initialize all variables to empty strings first
-	GIT_REPO=""
-	GIT_REPO_BRANCH=""
-	BINARY_URL=""
-	BINARY_NAME=""
-	BINARY_CHECKSUM=""
-	BINARY_UPDATE_CHECK=0
-	BINARY_AUTH_TOKEN=""
-	BINARY_AUTH_USER=""
-	BINARY_AUTH_PASS=""
-	PACKAGE_URL=""
-	PACKAGE_CHECKSUM=""
-	PACKAGE_UPDATE_CHECK=0
-	PACKAGE_AUTH_TOKEN=""
-	PACKAGE_AUTH_USER=""
-	PACKAGE_AUTH_PASS=""
 
 	# Git repository setup
 	if [ "$DEPLOYMENT_TYPE" = "git" ]; then
 		while true; do
-			GIT_REPO=$(whiptail --inputbox "Git repository clone link:" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3  < /dev/tty)
+			GIT_REPO=$(whiptail --inputbox "Git repository clone link:" 8 80 --title "$SETUP_TITLE" "$GIT_REPO" 3>&1 1>&2 2>&3  < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -87,7 +103,7 @@ configuration_setup() {
 		done
 
 		while true; do
-			GIT_REPO_BRANCH=$(whiptail --inputbox "Branch name (leave blank to use default branch):" 10 40 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+			GIT_REPO_BRANCH=$(whiptail --inputbox "Branch name (leave blank to use default branch):" 10 40 --title "$SETUP_TITLE" "$GIT_REPO_BRANCH" 3>&1 1>&2 2>&3 < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -107,7 +123,7 @@ configuration_setup() {
 	# Binary download setup
 	if [ "$DEPLOYMENT_TYPE" = "binary" ]; then
 		while true; do
-			BINARY_URL=$(whiptail --inputbox "Binary download URL:" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+			BINARY_URL=$(whiptail --inputbox "Binary download URL:" 8 80 --title "$SETUP_TITLE" "$BINARY_URL" 3>&1 1>&2 2>&3 < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -120,7 +136,7 @@ configuration_setup() {
 		done
 
 		while true; do
-			BINARY_NAME=$(whiptail --inputbox "Binary filename:" 8 60 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+			BINARY_NAME=$(whiptail --inputbox "Binary filename:" 8 60 --title "$SETUP_TITLE" "$BINARY_NAME" 3>&1 1>&2 2>&3 < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -132,7 +148,7 @@ configuration_setup() {
 			fi
 		done
 
-		BINARY_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+		BINARY_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" "$BINARY_CHECKSUM" 3>&1 1>&2 2>&3 < /dev/tty)
 		if [ "$?" = 1 ]; then
 			echo "Configuration setup cancelled."
 			exit 1
@@ -146,7 +162,7 @@ configuration_setup() {
 			fi
 		fi
 
-		if whiptail --title "$SETUP_TITLE" --yesno "Re-download binary on each boot?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
+		if whiptail --title "$SETUP_TITLE" $( [ "${BINARY_UPDATE_CHECK:-0}" -eq 0 ] && echo "--defaultno" ) --yesno "Re-download binary on each boot?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
 			BINARY_UPDATE_CHECK=1
 		else
 			BINARY_UPDATE_CHECK=0
@@ -164,7 +180,7 @@ configuration_setup() {
 			fi
 			
 			if [ "$AUTH_TYPE" = "token" ]; then
-				BINARY_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+				BINARY_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" "$BINARY_AUTH_TOKEN" 3>&1 1>&2 2>&3 < /dev/tty)
 				if [ "$?" = 1 ]; then
 					echo "Configuration setup cancelled."
 					exit 1
@@ -172,12 +188,12 @@ configuration_setup() {
 				BINARY_AUTH_USER=""
 				BINARY_AUTH_PASS=""
 			elif [ "$AUTH_TYPE" = "basic" ]; then
-				BINARY_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+				BINARY_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" "$BINARY_AUTH_USER" 3>&1 1>&2 2>&3 < /dev/tty)
 				if [ "$?" = 1 ]; then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
-				BINARY_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+				BINARY_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" "$BINARY_AUTH_PASS" 3>&1 1>&2 2>&3 < /dev/tty)
 				if [ "$?" = 1 ]; then
 					echo "Configuration setup cancelled."
 					exit 1
@@ -194,7 +210,7 @@ configuration_setup() {
 	# Package download setup
 	if [ "$DEPLOYMENT_TYPE" = "package" ]; then
 		while true; do
-			PACKAGE_URL=$(whiptail --inputbox "Package download URL (.deb):" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+			PACKAGE_URL=$(whiptail --inputbox "Package download URL (.deb):" 8 80 --title "$SETUP_TITLE" "$PACKAGE_URL" 3>&1 1>&2 2>&3 < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -206,7 +222,7 @@ configuration_setup() {
 			fi
 		done
 
-		PACKAGE_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+		PACKAGE_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" "$PACKAGE_CHECKSUM" 3>&1 1>&2 2>&3 < /dev/tty)
 		if [ "$?" = 1 ]; then
 			echo "Configuration setup cancelled."
 			exit 1
@@ -220,7 +236,7 @@ configuration_setup() {
 			fi
 		fi
 
-		if whiptail --title "$SETUP_TITLE" --yesno "Re-download package on each boot?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
+		if whiptail --title "$SETUP_TITLE" $( [ "${PACKAGE_UPDATE_CHECK:-0}" -eq 0 ] && echo "--defaultno" ) --yesno "Re-download package on each boot?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
 			PACKAGE_UPDATE_CHECK=1
 		else
 			PACKAGE_UPDATE_CHECK=0
@@ -238,7 +254,7 @@ configuration_setup() {
 			fi
 			
 			if [ "$AUTH_TYPE" = "token" ]; then
-				PACKAGE_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+				PACKAGE_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" "$PACKAGE_AUTH_TOKEN" 3>&1 1>&2 2>&3 < /dev/tty)
 				if [ "$?" = 1 ]; then
 					echo "Configuration setup cancelled."
 					exit 1
@@ -246,12 +262,12 @@ configuration_setup() {
 				PACKAGE_AUTH_USER=""
 				PACKAGE_AUTH_PASS=""
 			elif [ "$AUTH_TYPE" = "basic" ]; then
-				PACKAGE_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+				PACKAGE_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" "$PACKAGE_AUTH_USER" 3>&1 1>&2 2>&3 < /dev/tty)
 				if [ "$?" = 1 ]; then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
-				PACKAGE_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+				PACKAGE_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" "$PACKAGE_AUTH_PASS" 3>&1 1>&2 2>&3 < /dev/tty)
 				if [ "$?" = 1 ]; then
 					echo "Configuration setup cancelled."
 					exit 1
@@ -283,7 +299,7 @@ configuration_setup() {
 	)
 
 	while true; do
-		DEPLOY_LOCATION=$(whiptail --inputbox "Deploy path (where your program will be deployed to):" 8 70 --title "$SETUP_TITLE" "/scripts" 3>&1 1>&2 2>&3 < /dev/tty)
+		DEPLOY_LOCATION=$(whiptail --inputbox "Deploy path (where your program will be deployed to):" 8 70 --title "$SETUP_TITLE" "$DEPLOY_LOCATION" 3>&1 1>&2 2>&3 < /dev/tty)
 		if [ "$?" = 1 ]; then
 		echo "Configuration setup cancelled."
 			exit 1
@@ -330,7 +346,7 @@ configuration_setup() {
 	# Get deployment-specific run configuration
 	if [ "$DEPLOYMENT_TYPE" = "git" ]; then
 		while true; do
-			REPO_RUN_COMMAND=$(whiptail --inputbox "Command to run in the repository (leave blank for 'source main.sh'):" 10 70 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+			REPO_RUN_COMMAND=$(whiptail --inputbox "Command to run in the repository (leave blank for 'source main.sh'):" 10 70 --title "$SETUP_TITLE" "$REPO_RUN_COMMAND" 3>&1 1>&2 2>&3 < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -348,7 +364,7 @@ configuration_setup() {
 		PACKAGE_RUN_COMMAND=""
 	elif [ "$DEPLOYMENT_TYPE" = "binary" ]; then
 		while true; do
-			BINARY_RUN_FLAGS=$(whiptail --inputbox "Flags/arguments to pass when running the binary (optional):" 10 70 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+			BINARY_RUN_FLAGS=$(whiptail --inputbox "Flags/arguments to pass when running the binary (optional):" 10 70 --title "$SETUP_TITLE" "$BINARY_RUN_FLAGS" 3>&1 1>&2 2>&3 < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -366,7 +382,7 @@ configuration_setup() {
 		PACKAGE_RUN_COMMAND=""
 	elif [ "$DEPLOYMENT_TYPE" = "package" ]; then
 		while true; do
-			PACKAGE_RUN_COMMAND=$(whiptail --inputbox "Command to run the installed package (e.g., 'myapp --start'):" 10 70 --title "$SETUP_TITLE" 3>&1 1>&2 2>&3 < /dev/tty)
+			PACKAGE_RUN_COMMAND=$(whiptail --inputbox "Command to run the installed package (e.g., 'myapp --start'):" 10 70 --title "$SETUP_TITLE" "$PACKAGE_RUN_COMMAND" 3>&1 1>&2 2>&3 < /dev/tty)
 			if [ "$?" = 1 ]; then
 				echo "Configuration setup cancelled."
 				exit 1
@@ -385,7 +401,7 @@ configuration_setup() {
 	fi
 
 	# Cage Window Manager flag
-	if whiptail --title "$SETUP_TITLE" --yesno "Do you want to run the program as a kiosk using Cage?" 8 60 3>&1 1>&2 2>&3 < /dev/tty; then
+	if whiptail --title "$SETUP_TITLE" $( [ "${run_in_cage:-0}" -eq 0 ] && echo "--defaultno" ) --yesno "Do you want to run the program as a kiosk using Cage?" 8 60 3>&1 1>&2 2>&3 < /dev/tty; then
 		run_in_cage=1
 		whiptail --title "WARNING: Cage Mode Selected" --msgbox "Enabling Cage will disable standard display managers (GDM/LightDM/etc.) on boot to ensure the kiosk runs exclusively. Make sure this is intended for your embedded system." 12 60 < /dev/tty
 	else
@@ -393,11 +409,15 @@ configuration_setup() {
 	fi
 
 	# Turning on/off simple flags
+	STATUS_REFRESH="OFF"; [ "${full_repo_refresh:-0}" -eq 1 ] && STATUS_REFRESH="ON"
+	STATUS_UPDATES="OFF"; [ "${check_for_package_updates:-0}" -eq 1 ] && STATUS_UPDATES="ON"
+	STATUS_RUN="OFF"; [ "${run_script:-1}" -eq 1 ] && STATUS_RUN="ON"
+
 	choices=$(whiptail --title "$SETUP_TITLE" --checklist \
 		"Choose misc options (space to tick/untick):" 15 110 3 \
-		"FULL_REPO_REFRESH" "Have the repository reclone itself rather than just git pull (git only)." OFF \
-		"CHECK_UPDATES" "Check for latest updates each boot using apt." OFF \
-		"RUN_PROGRAM" "Run the deployed program on startup." ON 3>&1 1>&2 2>&3 < /dev/tty)
+		"FULL_REPO_REFRESH" "Have the repository reclone itself rather than just git pull (git only)." "$STATUS_REFRESH" \
+		"CHECK_UPDATES" "Check for latest updates each boot using apt." "$STATUS_UPDATES" \
+		"RUN_PROGRAM" "Run the deployed program on startup." "$STATUS_RUN" 3>&1 1>&2 2>&3 < /dev/tty)
 	if [ "$?" = 1 ]; then
 		echo "Configuration setup cancelled."
 		exit 1
@@ -520,10 +540,10 @@ run_in_cage=$run_in_cage
 
 # ===== ADVANCED SETTINGS =====
 # Git operation timeout in seconds (default: 300)
-git_timeout=300
+git_timeout=$GIT_TIMEOUT
 
 # Download retry attempts (default: 3)
-download_max_retries=3
+download_max_retries=$DOWNLOAD_MAX_RETRIES
 
 EOF
 

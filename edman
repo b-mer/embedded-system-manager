@@ -84,8 +84,13 @@ case $1 in
 
   "configsetup")
     check_root
-    exec /opt/embedded-system-manager/config_setup.sh
+    /opt/embedded-system-manager/config_setup.sh
+    if whiptail --title "Restart Service" --yesno "Would you like to restart the embedded-system-deployer service to apply changes now?" 8 60 3>&1 1>&2 2>&3; then
+      systemctl restart embedded-system-deployer.service
+      echo "Service restarted."
+    fi
     ;;
+
 
 
   "gotoscripts")
