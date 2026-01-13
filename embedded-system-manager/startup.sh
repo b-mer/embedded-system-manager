@@ -277,6 +277,11 @@ if ! [[ "${check_for_package_updates:-0}" =~ ^[01]$ ]]; then
   exit 1
 fi
 
+if ! [[ "${webkit_software_rendering:-0}" =~ ^[01]$ ]]; then
+  echo "ERROR: webkit_software_rendering must be 0 or 1, got: ${webkit_software_rendering:-undefined}"
+  exit 1
+fi
+
 # Install the Cage wayland compositor if needed
 if [ "$run_in_cage" -eq 1 ]; then
   echo "--- INSTALLING CAGE FOR KIOSK MODE ---"
@@ -402,13 +407,16 @@ EOF
     export GDK_CORE_DEVICE_EVENTS=1
     export GTK_CSD=0
     export GTK_OVERLAY_SCROLLING=0
-    export GDK_GL=gles
     export CLUTTER_BACKEND=wayland
     export SDL_VIDEODRIVER=wayland
-    export WEBKIT_DISABLE_COMPOSITING_MODE=1
-    export WEBKIT_USE_GLDOM=0
-    export WEBKIT_DISABLE_DMABUF_RENDERER=1
     export WEBKIT_WEB_PROCESS_SANDBOX_STRICT=0
+
+    if [ "${webkit_software_rendering:-1}" -eq 1 ]; then
+      export GDK_GL=gles
+      export WEBKIT_DISABLE_COMPOSITING_MODE=1
+      export WEBKIT_USE_GLDOM=0
+      export WEBKIT_DISABLE_DMABUF_RENDERER=1
+    fi
 
     if command -v gsettings &>/dev/null; then
       gsettings set org.gnome.desktop.wm.preferences button-layout '' || true

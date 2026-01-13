@@ -78,6 +78,9 @@ run_script=1
 # 0 = Do not use Cage Window Manager
 run_in_cage=0
 
+# Use WebKit software rendering (fixes flickering on Raspberry Pi/Tauri)
+webkit_software_rendering=1
+
 # ===== ADVANCED SETTINGS =====
 # Git operation timeout in seconds (default: 300)
 git_timeout=300

@@ -74,6 +74,7 @@ configuration_setup() {
 	full_repo_refresh="${full_repo_refresh:-0}"
 	check_for_package_updates="${check_for_package_updates:-0}"
 	run_script="${run_script:-1}"
+	webkit_software_rendering="${webkit_software_rendering:-1}"
 	GIT_TIMEOUT="${git_timeout:-300}"
 	DOWNLOAD_MAX_RETRIES="${download_max_retries:-3}"
 
@@ -396,6 +397,7 @@ configuration_setup() {
 	STATUS_REFRESH="OFF"; [ "${full_repo_refresh:-0}" -eq 1 ] && STATUS_REFRESH="ON"
 	STATUS_APT_UPDATES="OFF"; [ "${check_for_package_updates:-0}" -eq 1 ] && STATUS_APT_UPDATES="ON"
 	STATUS_RUN="OFF"; [ "${run_script:-1}" -eq 1 ] && STATUS_RUN="ON"
+	STATUS_WEBKIT_SOFTWARE_RENDERING="OFF"; [ "${webkit_software_rendering:-1}" -eq 1 ] && STATUS_WEBKIT_SOFTWARE_RENDERING="ON"
 	STATUS_BINARY_UPDATE="OFF"; [ "${BINARY_UPDATE_CHECK:-0}" -eq 1 ] && STATUS_BINARY_UPDATE="ON"
 	STATUS_PACKAGE_UPDATE="OFF"; [ "${PACKAGE_UPDATE_CHECK:-0}" -eq 1 ] && STATUS_PACKAGE_UPDATE="ON"
 
@@ -410,9 +412,10 @@ configuration_setup() {
 	fi
 	MISC_OPTIONS+=("CHECK_APT_UPDATES" "Check for system (apt) updates on boot" "$STATUS_APT_UPDATES")
 	MISC_OPTIONS+=("RUN_PROGRAM" "Run the deployed program on startup" "$STATUS_RUN")
+	MISC_OPTIONS+=("WEBKIT_SOFTWARE_RENDERING" "Use WebKit software rendering to fix flickering (recommended for Pi)" "$STATUS_WEBKIT_SOFTWARE_RENDERING")
 
 	if ! choices=$(whiptail --title "$SETUP_TITLE" --checklist \
-		"Choose misc options (space to tick/untick):" 15 110 5 \
+		"Choose misc options (space to tick/untick):" 15 110 6 \
 		"${MISC_OPTIONS[@]}" 3>&1 1>&2 2>&3 < /dev/tty); then
 		echo "Configuration setup cancelled."
 		exit 1
@@ -424,6 +427,7 @@ configuration_setup() {
 	PACKAGE_UPDATE_CHECK=0
 	check_for_package_updates=0
 	run_script=0
+	webkit_software_rendering=0
 
 	# Parse the choices string using stable identifiers
 	if echo "$choices" | grep -q "FULL_REPO_REFRESH"; then full_repo_refresh=1; fi
@@ -431,6 +435,7 @@ configuration_setup() {
 	if echo "$choices" | grep -q "PACKAGE_UPDATE_CHECK"; then PACKAGE_UPDATE_CHECK=1; fi
 	if echo "$choices" | grep -q "CHECK_APT_UPDATES"; then check_for_package_updates=1; fi
 	if echo "$choices" | grep -q "RUN_PROGRAM"; then run_script=1; fi
+	if echo "$choices" | grep -q "WEBKIT_SOFTWARE_RENDERING"; then webkit_software_rendering=1; fi
 	echo "Step 6 complete."
 
 	# 7. Advanced Settings
@@ -556,6 +561,9 @@ run_script=$run_script
 # 1 = Set up and run code in Cage Window Manager
 # 0 = Do not use Cage Window Manager
 run_in_cage=$run_in_cage
+
+# Software rendering flag (recommended for Raspberry Pi)
+webkit_software_rendering=$webkit_software_rendering
 
 # ===== ADVANCED SETTINGS =====
 # Git operation timeout in seconds (default: 300)
