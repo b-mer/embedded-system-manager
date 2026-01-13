@@ -389,11 +389,18 @@ if [ "$run_script" -eq 1 ]; then
 
     # Graphics workarounds for Tauri on Raspberry Pi 5
     export GDK_BACKEND=wayland
+    export GDK_CORE_DEVICE_EVENTS=1
+    export GTK_CSD=0
+    export GTK_OVERLAY_SCROLLING=0
+    export GDK_GL=gles
     export WEBKIT_DISABLE_COMPOSITING_MODE=1
     export WEBKIT_USE_GLDOM=0
     export WEBKIT_DISABLE_DMABUF_RENDERER=1
-    export GTK_CSD=0
-    export GTK_OVERLAY_SCROLLING=0
+    export WEBKIT_WEB_PROCESS_SANDBOX_STRICT=0
+
+    if command -v gsettings &>/dev/null; then
+      gsettings set org.gnome.desktop.wm.preferences button-layout '' || true
+    fi
     
     # Run the program within Cage
     # Cage will run on the first available TTY

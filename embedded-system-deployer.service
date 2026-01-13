@@ -23,6 +23,8 @@ TTYVTDisallocate=yes
 
 # Environment variables for Wayland/Cage
 Environment="XDG_RUNTIME_DIR=/run/embedded-system-manager"
+Environment="GTK_CSD=0"
+Environment="GDK_BACKEND=wayland"
 
 [Install]
 WantedBy=multi-user.target
