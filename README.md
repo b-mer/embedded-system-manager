@@ -21,7 +21,7 @@ SETUP & INSTALLATION
 - Set up SSH encryption keys if you are using a private git repository.
   - NOTE: Encryption keys with passwords aren't supported at the moment
 
-- Run:
+- Run to set up Embedded System Manager or update an existing install:
 ```bash
 bash -c "$(curl -sL https://raw.githubusercontent.com/b-mer/embedded-system-manager/main/install.sh)"
 ```

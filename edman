@@ -157,8 +157,17 @@ case $1 in
     exec /opt/embedded-system-manager/uninstall.sh
     ;;
 
+  "version")
+    if [ -f "/opt/embedded-system-manager/VERSION" ]; then
+      cat "/opt/embedded-system-manager/VERSION"
+    else
+      echo "Version unknown"
+    fi
+    ;;
+
   *)
-    printf -- "-- Embedded System Manager --\n
+    VERSION=$(cat /opt/embedded-system-manager/VERSION 2>/dev/null || echo "unknown")
+    printf -- "-- Embedded System Manager (v$VERSION) --\n
     Arguments:\n
     reset - Restarts the service.\n
     status - Check systemctl status of the embedded-system-deployer service.\n
@@ -169,5 +178,6 @@ case $1 in
     configsetup - Re-run the config setup TUI that was ran on first setup.\n
     gotoscripts - Change current directory to the directory where the downloaded repository is stored.\n
     uninstall - Completely remove Embedded System Manager from the system.\n
+    version - Show the current version of Embedded System Manager.\n
     help - Show this list of command arguments.\n\n" ;;
 esac

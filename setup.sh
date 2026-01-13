@@ -45,12 +45,37 @@ fi
 
 cd "$SCRIPT_DIR"
 
-# Run configuration setup.
-chmod +x embedded-system-manager/config_setup.sh
-if ! source embedded-system-manager/config_setup.sh; then
-  echo "Configuration setup failed or was cancelled."
-  cd "$SCRIPT_DIR" 2>/dev/null || true
-  exit 1
+# Versioning and Update Logic
+NEW_VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "1.0.0")
+INSTALL_MODE="install"
+
+if [ -d "/opt/embedded-system-manager" ]; then
+    INSTALLED_VERSION="unknown"
+    [ -f "/opt/embedded-system-manager/VERSION" ] && INSTALLED_VERSION=$(cat "/opt/embedded-system-manager/VERSION")
+    
+    if ! CHOICE=$(whiptail --title "Existing Installation Found" --menu \
+        "An existing installation was found at /opt/embedded-system-manager.\n\nInstalled Version: $INSTALLED_VERSION\nNew Version: $NEW_VERSION\n\nPlease choose an option:" 15 65 2 \
+        "Update" "Preserve existing configuration and paths" \
+        "Reinstall" "Start fresh (this will overwrite your configuration)" 3>&1 1>&2 2>&3 < /dev/tty); then
+        echo "Setup cancelled."
+        exit 1
+    fi
+    
+    if [ "$CHOICE" = "Update" ]; then
+        INSTALL_MODE="update"
+    else
+        INSTALL_MODE="reinstall"
+    fi
+fi
+
+# Run configuration setup if not updating.
+if [ "$INSTALL_MODE" != "update" ]; then
+    chmod +x embedded-system-manager/config_setup.sh
+    if ! source embedded-system-manager/config_setup.sh; then
+      echo "Configuration setup failed or was cancelled."
+      cd "$SCRIPT_DIR" 2>/dev/null || true
+      exit 1
+    fi
 fi
 
 # Ensure we're back in the script directory after config_setup
@@ -70,10 +95,25 @@ if [ ! -f "embedded-system-manager/config" ]; then
   exit 1
 fi
 
+if [ "$INSTALL_MODE" = "update" ]; then
+    echo "Backing up configuration..."
+    [ -f "/opt/embedded-system-manager/config" ] && cp "/opt/embedded-system-manager/config" /tmp/edman_config_bak
+    [ -f "/opt/embedded-system-manager/paths.conf" ] && cp "/opt/embedded-system-manager/paths.conf" /tmp/edman_paths_bak
+fi
+
 echo "Copying script directory to /opt directory..."
 
 # Install embedded-system-manager
 cp -rf embedded-system-manager /opt
+
+if [ "$INSTALL_MODE" = "update" ]; then
+    echo "Restoring configuration..."
+    [ -f /tmp/edman_config_bak ] && mv /tmp/edman_config_bak "/opt/embedded-system-manager/config"
+    [ -f /tmp/edman_paths_bak ] && mv /tmp/edman_paths_bak "/opt/embedded-system-manager/paths.conf"
+fi
+
+# Always copy the new VERSION file to /opt/embedded-system-manager
+cp "$SCRIPT_DIR/VERSION" /opt/embedded-system-manager/VERSION
 
 # Get rid of windows /r newlines to prevent bugs
 sed -i 's/\r$//' /opt/embedded-system-manager/*
@@ -137,6 +177,7 @@ echo "Enabling and starting embedded-system-deployer.service..."
 systemctl enable embedded-system-deployer.service
 systemctl start embedded-system-deployer.service
 
+echo "Successfully updated to version $NEW_VERSION"
 echo "Setup complete."
 
 # Return to the original directory where the script was first run
