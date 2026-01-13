@@ -155,22 +155,24 @@ if [ -f /opt/embedded-system-manager/paths.conf ]; then
 fi
 
 # Perform initial deployment based on type
-case "$deployment_source_type" in
-	git)
-		echo "Cloning repository into $script_workspace..."
-		full_repo_refresh=1
-		if ! source /opt/embedded-system-manager/install_repository.sh; then
-			echo "ERROR: Failed to clone repository during setup."
-			exit 1
-		fi
-		;;
-	binary)
-		echo "Initial binary deployment will occur on first service start."
-		;;
-	package)
-		echo "Initial package installation will occur on first service start."
-		;;
-esac
+if [ "$INSTALL_MODE" != "update" ]; then
+	case "$deployment_source_type" in
+		git)
+			echo "Cloning repository into $script_workspace..."
+			full_repo_refresh=1
+			if ! source /opt/embedded-system-manager/install_repository.sh; then
+				echo "ERROR: Failed to clone repository during setup."
+				exit 1
+			fi
+			;;
+		binary)
+			echo "Initial binary deployment will occur on first service start."
+			;;
+		package)
+			echo "Initial package installation will occur on first service start."
+			;;
+	esac
+fi
 
 echo "Enabling and starting embedded-system-deployer.service..."
 # Enabling and starting embedded-system-deployer systemd service

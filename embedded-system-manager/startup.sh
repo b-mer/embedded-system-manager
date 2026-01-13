@@ -392,6 +392,8 @@ if [ "$run_script" -eq 1 ]; then
     export WEBKIT_DISABLE_COMPOSITING_MODE=1
     export WEBKIT_USE_GLDOM=0
     export WEBKIT_DISABLE_DMABUF_RENDERER=1
+    export GTK_CSD=0
+    export GTK_OVERLAY_SCROLLING=0
     
     # Run the program within Cage
     # Cage will run on the first available TTY
