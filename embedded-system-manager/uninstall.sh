@@ -26,6 +26,9 @@ fi
 # Load config to get script_workspace location
 if [ -f /opt/embedded-system-manager/config ]; then
 	source /opt/embedded-system-manager/config
+	if [ -f /opt/embedded-system-manager/paths.conf ]; then
+		source /opt/embedded-system-manager/paths.conf
+	fi
 else
 	echo "Warning: Config file not found. Will proceed with default locations."
 	script_workspace="/scripts"

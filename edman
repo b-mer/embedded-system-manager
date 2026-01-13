@@ -38,6 +38,10 @@ load_config() {
       echo "The config file may be corrupted. Please run 'edman configsetup' to regenerate it."
       exit 1
     fi
+
+    if [ -f "/opt/embedded-system-manager/paths.conf" ]; then
+      source "/opt/embedded-system-manager/paths.conf"
+    fi
   fi
 }
 

@@ -220,6 +220,11 @@ if ! source config; then
   exit 1
 fi
 
+# Load paths configuration if it exists
+if [ -f paths.conf ]; then
+  source paths.conf
+fi
+
 # Run validation immediately after loading config
 if ! validate_config; then
   echo "ERROR: Configuration validation failed."

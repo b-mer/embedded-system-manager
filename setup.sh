@@ -108,6 +108,11 @@ if ! source /opt/embedded-system-manager/config; then
 	exit 1
 fi
 
+# Load paths configuration if it exists
+if [ -f /opt/embedded-system-manager/paths.conf ]; then
+	source /opt/embedded-system-manager/paths.conf
+fi
+
 # Perform initial deployment based on type
 case "$deployment_source_type" in
 	git)
