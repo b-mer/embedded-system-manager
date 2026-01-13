@@ -87,6 +87,7 @@ configuration_setup() {
 		echo "Configuration setup cancelled."
 		exit 1
 	fi
+	echo "Step 1 complete."
 
 	# 2. Source Settings
 	echo "Step 2: Configuring Source Settings..."
@@ -99,8 +100,8 @@ configuration_setup() {
 			fi
 			# Run git command and show progress with infobox
 			whiptail --infobox "Checking if repository can be accessed...\n\nPlease wait..." 8 50 < /dev/tty
-			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1
-			exit_code=$?
+			exit_code=0
+			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" >/dev/null 2>&1 || exit_code=$?
 			if [ "$exit_code" -eq 0 ]; then
 				break
 			else
@@ -115,8 +116,8 @@ configuration_setup() {
 			fi
 			# Run git command and show progress with infobox
 			whiptail --infobox "Checking if branch can be accessed...\n\nPlease wait..." 8 50 < /dev/tty
-			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" "$GIT_REPO_BRANCH" >/dev/null 2>&1
-			exit_code=$?
+			exit_code=0
+			GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$GIT_REPO" "$GIT_REPO_BRANCH" >/dev/null 2>&1 || exit_code=$?
 			if [ "$exit_code" -eq 0 ] || [ -z "$GIT_REPO_BRANCH" ]; then
 				break
 			else
@@ -165,12 +166,10 @@ configuration_setup() {
 		fi
 
 		if whiptail --title "$SETUP_TITLE" --yesno "Does this download require authentication?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
-			AUTH_TYPE=$(whiptail --title "$SETUP_TITLE" --menu "Choose authentication type:" 12 60 2 \
+			if ! AUTH_TYPE=$(whiptail --title "$SETUP_TITLE" --menu "Choose authentication type:" 12 60 2 \
 				"token" "Bearer token" \
 				"basic" "Basic auth (username/password)" \
-				3>&1 1>&2 2>&3 < /dev/tty)
-			
-			if [ "$?" = 1 ]; then
+				3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -260,6 +259,7 @@ configuration_setup() {
 			PACKAGE_AUTH_PASS=""
 		fi
 	fi
+	echo "Step 2 complete."
 
 	# Protected system paths that should not be used as deployment locations
 	PROTECTED_PATHS=(
@@ -313,7 +313,7 @@ configuration_setup() {
 				continue
 			fi
 			# Check available disk space (at least 500MB for safety)
-			available_space=$(df -m "$DEPLOY_LOCATION" | tail -n 1 | awk '{print $(NF-2)}')
+			available_space=$(df -m "$DEPLOY_LOCATION" 2>/dev/null | tail -n 1 | awk '{print $(NF-2)}') || available_space=0
 			if [ "$available_space" -lt 500 ]; then
 				whiptail --msgbox "Insufficient disk space (need at least 500MB). Try again." 8 60 < /dev/tty
 				continue
@@ -323,6 +323,7 @@ configuration_setup() {
 			whiptail --msgbox "Invalid path. Try again." 8 40 < /dev/tty
 		fi
 	done
+	echo "Step 3 complete."
 
 	# 4. Run Settings
 	echo "Step 4: Configuring Run Settings..."
@@ -378,6 +379,7 @@ configuration_setup() {
 		REPO_RUN_COMMAND=""
 		BINARY_RUN_FLAGS=""
 	fi
+	echo "Step 4 complete."
 
 	# 5. Kiosk Mode
 	echo "Step 5: Configuring Kiosk Mode (Cage)..."
@@ -387,6 +389,7 @@ configuration_setup() {
 	else
 		run_in_cage=0
 	fi
+	echo "Step 5 complete."
 
 	# 6. Misc Options
 	echo "Step 6: Configuring Misc Options..."
@@ -428,6 +431,7 @@ configuration_setup() {
 	if echo "$choices" | grep -q "PACKAGE_UPDATE_CHECK"; then PACKAGE_UPDATE_CHECK=1; fi
 	if echo "$choices" | grep -q "CHECK_APT_UPDATES"; then check_for_package_updates=1; fi
 	if echo "$choices" | grep -q "RUN_PROGRAM"; then run_script=1; fi
+	echo "Step 6 complete."
 
 	# 7. Advanced Settings
 	echo "Step 7: Configuring Advanced Settings..."
@@ -450,6 +454,7 @@ configuration_setup() {
 			whiptail --msgbox "Retry attempts must be a positive number." 8 40 < /dev/tty
 		done
 	fi
+	echo "Step 7 complete."
 
 	# 8. Config Generation
 	echo "Step 8: Generating Configuration Files..."
@@ -565,6 +570,7 @@ EOF
 	chmod 600 "$CONFIG_FILE"
 	chmod 644 "$PATHS_FILE"
 	echo "Configuration files created (config: 600, paths.conf: 644)."
+	echo "Step 8 complete."
 
 	# Return to original directory
 	cd "$ORIGINAL_DIR"
