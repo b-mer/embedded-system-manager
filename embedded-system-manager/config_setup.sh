@@ -77,18 +77,23 @@ configuration_setup() {
 	GIT_TIMEOUT="${git_timeout:-300}"
 	DOWNLOAD_MAX_RETRIES="${download_max_retries:-3}"
 
-	# Select deployment source type
-	DEPLOYMENT_TYPE=$(whiptail --title "$SETUP_TITLE" --default-item "$DEPLOYMENT_TYPE" --menu "Choose deployment source type:" 15 60 3 \
+	# 1. Deployment Type
+	echo "Step 1: Choosing deployment type..."
+	if ! DEPLOYMENT_TYPE=$(whiptail --title "$SETUP_TITLE" --default-item "$DEPLOYMENT_TYPE" --menu "Choose deployment source type:" 15 60 3 \
 		"git" "Git repository (clone/pull)" \
 		"binary" "Binary file download" \
 		"package" "Package download (.deb)" \
-		3>&1 1>&2 2>&3 < /dev/tty)
+		3>&1 1>&2 2>&3 < /dev/tty); then
+		echo "Configuration setup cancelled."
+		exit 1
+	fi
 
+	# 2. Source Settings
+	echo "Step 2: Configuring Source Settings..."
 	# Git repository setup
 	if [ "$DEPLOYMENT_TYPE" = "git" ]; then
 		while true; do
-			GIT_REPO=$(whiptail --inputbox "Git repository clone link:" 8 80 --title "$SETUP_TITLE" "$GIT_REPO" 3>&1 1>&2 2>&3  < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! GIT_REPO=$(whiptail --inputbox "Git repository clone link:" 8 80 --title "$SETUP_TITLE" "$GIT_REPO" 3>&1 1>&2 2>&3  < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -104,8 +109,7 @@ configuration_setup() {
 		done
 
 		while true; do
-			GIT_REPO_BRANCH=$(whiptail --inputbox "Branch name (leave blank to use default branch):" 10 40 --title "$SETUP_TITLE" "$GIT_REPO_BRANCH" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! GIT_REPO_BRANCH=$(whiptail --inputbox "Branch name (leave blank to use default branch):" 10 40 --title "$SETUP_TITLE" "$GIT_REPO_BRANCH" 3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -124,8 +128,7 @@ configuration_setup() {
 	# Binary download setup
 	if [ "$DEPLOYMENT_TYPE" = "binary" ]; then
 		while true; do
-			BINARY_URL=$(whiptail --inputbox "Binary download URL:" 8 80 --title "$SETUP_TITLE" "$BINARY_URL" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! BINARY_URL=$(whiptail --inputbox "Binary download URL:" 8 80 --title "$SETUP_TITLE" "$BINARY_URL" 3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -137,8 +140,7 @@ configuration_setup() {
 		done
 
 		while true; do
-			BINARY_NAME=$(whiptail --inputbox "Binary filename:" 8 60 --title "$SETUP_TITLE" "$BINARY_NAME" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! BINARY_NAME=$(whiptail --inputbox "Binary filename:" 8 60 --title "$SETUP_TITLE" "$BINARY_NAME" 3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -149,8 +151,7 @@ configuration_setup() {
 			fi
 		done
 
-		BINARY_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" "$BINARY_CHECKSUM" 3>&1 1>&2 2>&3 < /dev/tty)
-		if [ "$?" = 1 ]; then
+		if ! BINARY_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" "$BINARY_CHECKSUM" 3>&1 1>&2 2>&3 < /dev/tty); then
 			echo "Configuration setup cancelled."
 			exit 1
 		fi
@@ -175,21 +176,18 @@ configuration_setup() {
 			fi
 			
 			if [ "$AUTH_TYPE" = "token" ]; then
-				BINARY_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" "$BINARY_AUTH_TOKEN" 3>&1 1>&2 2>&3 < /dev/tty)
-				if [ "$?" = 1 ]; then
+				if ! BINARY_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" "$BINARY_AUTH_TOKEN" 3>&1 1>&2 2>&3 < /dev/tty); then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
 				BINARY_AUTH_USER=""
 				BINARY_AUTH_PASS=""
 			elif [ "$AUTH_TYPE" = "basic" ]; then
-				BINARY_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" "$BINARY_AUTH_USER" 3>&1 1>&2 2>&3 < /dev/tty)
-				if [ "$?" = 1 ]; then
+				if ! BINARY_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" "$BINARY_AUTH_USER" 3>&1 1>&2 2>&3 < /dev/tty); then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
-				BINARY_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" "$BINARY_AUTH_PASS" 3>&1 1>&2 2>&3 < /dev/tty)
-				if [ "$?" = 1 ]; then
+				if ! BINARY_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" "$BINARY_AUTH_PASS" 3>&1 1>&2 2>&3 < /dev/tty); then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
@@ -205,8 +203,7 @@ configuration_setup() {
 	# Package download setup
 	if [ "$DEPLOYMENT_TYPE" = "package" ]; then
 		while true; do
-			PACKAGE_URL=$(whiptail --inputbox "Package download URL (.deb):" 8 80 --title "$SETUP_TITLE" "$PACKAGE_URL" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! PACKAGE_URL=$(whiptail --inputbox "Package download URL (.deb):" 8 80 --title "$SETUP_TITLE" "$PACKAGE_URL" 3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -217,8 +214,7 @@ configuration_setup() {
 			fi
 		done
 
-		PACKAGE_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" "$PACKAGE_CHECKSUM" 3>&1 1>&2 2>&3 < /dev/tty)
-		if [ "$?" = 1 ]; then
+		if ! PACKAGE_CHECKSUM=$(whiptail --inputbox "SHA256 checksum (optional, leave blank to skip):" 10 80 --title "$SETUP_TITLE" "$PACKAGE_CHECKSUM" 3>&1 1>&2 2>&3 < /dev/tty); then
 			echo "Configuration setup cancelled."
 			exit 1
 		fi
@@ -232,32 +228,27 @@ configuration_setup() {
 		fi
 
 		if whiptail --title "$SETUP_TITLE" --yesno "Does this download require authentication?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
-			AUTH_TYPE=$(whiptail --title "$SETUP_TITLE" --menu "Choose authentication type:" 12 60 2 \
+			if ! AUTH_TYPE=$(whiptail --title "$SETUP_TITLE" --menu "Choose authentication type:" 12 60 2 \
 				"token" "Bearer token" \
 				"basic" "Basic auth (username/password)" \
-				3>&1 1>&2 2>&3 < /dev/tty)
-			
-			if [ "$?" = 1 ]; then
+				3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
 			
 			if [ "$AUTH_TYPE" = "token" ]; then
-				PACKAGE_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" "$PACKAGE_AUTH_TOKEN" 3>&1 1>&2 2>&3 < /dev/tty)
-				if [ "$?" = 1 ]; then
+				if ! PACKAGE_AUTH_TOKEN=$(whiptail --inputbox "Bearer token:" 8 80 --title "$SETUP_TITLE" "$PACKAGE_AUTH_TOKEN" 3>&1 1>&2 2>&3 < /dev/tty); then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
 				PACKAGE_AUTH_USER=""
 				PACKAGE_AUTH_PASS=""
 			elif [ "$AUTH_TYPE" = "basic" ]; then
-				PACKAGE_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" "$PACKAGE_AUTH_USER" 3>&1 1>&2 2>&3 < /dev/tty)
-				if [ "$?" = 1 ]; then
+				if ! PACKAGE_AUTH_USER=$(whiptail --inputbox "Username:" 8 60 --title "$SETUP_TITLE" "$PACKAGE_AUTH_USER" 3>&1 1>&2 2>&3 < /dev/tty); then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
-				PACKAGE_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" "$PACKAGE_AUTH_PASS" 3>&1 1>&2 2>&3 < /dev/tty)
-				if [ "$?" = 1 ]; then
+				if ! PACKAGE_AUTH_PASS=$(whiptail --passwordbox "Password:" 8 60 --title "$SETUP_TITLE" "$PACKAGE_AUTH_PASS" 3>&1 1>&2 2>&3 < /dev/tty); then
 					echo "Configuration setup cancelled."
 					exit 1
 				fi
@@ -290,9 +281,8 @@ configuration_setup() {
 	# 3. Deploy Path
 	echo "Step 3: Configuring Deploy Path..."
 	while true; do
-		DEPLOY_LOCATION=$(whiptail --inputbox "Deploy path (where your program will be deployed to):" 8 70 --title "$SETUP_TITLE" "$DEPLOY_LOCATION" 3>&1 1>&2 2>&3 < /dev/tty)
-		if [ "$?" = 1 ]; then
-		echo "Configuration setup cancelled."
+		if ! DEPLOY_LOCATION=$(whiptail --inputbox "Deploy path (where your program will be deployed to):" 8 70 --title "$SETUP_TITLE" "$DEPLOY_LOCATION" 3>&1 1>&2 2>&3 < /dev/tty); then
+			echo "Configuration setup cancelled."
 			exit 1
 		fi
 		
@@ -323,7 +313,7 @@ configuration_setup() {
 				continue
 			fi
 			# Check available disk space (at least 500MB for safety)
-			available_space=$(df -BM "$DEPLOY_LOCATION" | awk 'NR==2 {print $4}' | sed 's/M//')
+			available_space=$(df -m "$DEPLOY_LOCATION" | tail -n 1 | awk '{print $(NF-2)}')
 			if [ "$available_space" -lt 500 ]; then
 				whiptail --msgbox "Insufficient disk space (need at least 500MB). Try again." 8 60 < /dev/tty
 				continue
@@ -338,8 +328,7 @@ configuration_setup() {
 	echo "Step 4: Configuring Run Settings..."
 	if [ "$DEPLOYMENT_TYPE" = "git" ]; then
 		while true; do
-			REPO_RUN_COMMAND=$(whiptail --inputbox "Command to run in the repository (leave blank for 'source main.sh'):" 10 70 --title "$SETUP_TITLE" "$REPO_RUN_COMMAND" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! REPO_RUN_COMMAND=$(whiptail --inputbox "Command to run in the repository (leave blank for 'source main.sh'):" 10 70 --title "$SETUP_TITLE" "$REPO_RUN_COMMAND" 3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -356,8 +345,7 @@ configuration_setup() {
 		PACKAGE_RUN_COMMAND=""
 	elif [ "$DEPLOYMENT_TYPE" = "binary" ]; then
 		while true; do
-			BINARY_RUN_FLAGS=$(whiptail --inputbox "Flags/arguments to pass when running the binary (optional):" 10 70 --title "$SETUP_TITLE" "$BINARY_RUN_FLAGS" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! BINARY_RUN_FLAGS=$(whiptail --inputbox "Flags/arguments to pass when running the binary (optional):" 10 70 --title "$SETUP_TITLE" "$BINARY_RUN_FLAGS" 3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -374,8 +362,7 @@ configuration_setup() {
 		PACKAGE_RUN_COMMAND=""
 	elif [ "$DEPLOYMENT_TYPE" = "package" ]; then
 		while true; do
-			PACKAGE_RUN_COMMAND=$(whiptail --inputbox "Command to run the installed package (e.g., 'myapp --start'):" 10 70 --title "$SETUP_TITLE" "$PACKAGE_RUN_COMMAND" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then
+			if ! PACKAGE_RUN_COMMAND=$(whiptail --inputbox "Command to run the installed package (e.g., 'myapp --start'):" 10 70 --title "$SETUP_TITLE" "$PACKAGE_RUN_COMMAND" 3>&1 1>&2 2>&3 < /dev/tty); then
 				echo "Configuration setup cancelled."
 				exit 1
 			fi
@@ -421,10 +408,9 @@ configuration_setup() {
 	MISC_OPTIONS+=("CHECK_APT_UPDATES" "Check for system (apt) updates on boot" "$STATUS_APT_UPDATES")
 	MISC_OPTIONS+=("RUN_PROGRAM" "Run the deployed program on startup" "$STATUS_RUN")
 
-	choices=$(whiptail --title "$SETUP_TITLE" --checklist \
+	if ! choices=$(whiptail --title "$SETUP_TITLE" --checklist \
 		"Choose misc options (space to tick/untick):" 15 110 5 \
-		"${MISC_OPTIONS[@]}" 3>&1 1>&2 2>&3 < /dev/tty)
-	if [ "$?" = 1 ]; then
+		"${MISC_OPTIONS[@]}" 3>&1 1>&2 2>&3 < /dev/tty); then
 		echo "Configuration setup cancelled."
 		exit 1
 	fi
@@ -447,15 +433,19 @@ configuration_setup() {
 	echo "Step 7: Configuring Advanced Settings..."
 	if whiptail --title "$SETUP_TITLE" --yesno "Do you want to configure advanced settings (timeouts, retries)?" 8 60 3>&1 1>&2 2>&3 < /dev/tty; then
 		while true; do
-			GIT_TIMEOUT=$(whiptail --inputbox "Git operation timeout in seconds:" 8 60 --title "$SETUP_TITLE" "$GIT_TIMEOUT" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then echo "Configuration setup cancelled."; exit 1; fi
+			if ! GIT_TIMEOUT=$(whiptail --inputbox "Git operation timeout in seconds:" 8 60 --title "$SETUP_TITLE" "$GIT_TIMEOUT" 3>&1 1>&2 2>&3 < /dev/tty); then
+				echo "Configuration setup cancelled."
+				exit 1
+			fi
 			if [[ "$GIT_TIMEOUT" =~ ^[0-9]+$ ]]; then break; fi
 			whiptail --msgbox "Timeout must be a positive number." 8 40 < /dev/tty
 		done
 		
 		while true; do
-			DOWNLOAD_MAX_RETRIES=$(whiptail --inputbox "Maximum download retry attempts:" 8 60 --title "$SETUP_TITLE" "$DOWNLOAD_MAX_RETRIES" 3>&1 1>&2 2>&3 < /dev/tty)
-			if [ "$?" = 1 ]; then echo "Configuration setup cancelled."; exit 1; fi
+			if ! DOWNLOAD_MAX_RETRIES=$(whiptail --inputbox "Maximum download retry attempts:" 8 60 --title "$SETUP_TITLE" "$DOWNLOAD_MAX_RETRIES" 3>&1 1>&2 2>&3 < /dev/tty); then
+				echo "Configuration setup cancelled."
+				exit 1
+			fi
 			if [[ "$DOWNLOAD_MAX_RETRIES" =~ ^[0-9]+$ ]]; then break; fi
 			whiptail --msgbox "Retry attempts must be a positive number." 8 40 < /dev/tty
 		done
