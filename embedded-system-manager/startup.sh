@@ -284,10 +284,6 @@ if [ "$run_in_cage" -eq 1 ]; then
     echo "ERROR: Failed to install Cage window manager."
     exit 1
   fi
-  if ! install_if_not_exist wlroots; then
-    echo "ERROR: Failed to install wlroots."
-    exit 1
-  fi
 fi
 
 echo "--- CHECKING FOR UPGRADES ---"
