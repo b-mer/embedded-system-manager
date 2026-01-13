@@ -66,7 +66,7 @@ package_run_command=""
 # Package update flag
 # 1 = Check for the latest updates from apt repositories
 # 0 = Do not check for package updates
-check_for_package_updates=1
+check_for_package_updates=0
 
 # Run program flag
 # 1 = Runs the deployed program
@@ -77,3 +77,10 @@ run_script=1
 # 1 = Set up and run code in Cage Window Manager
 # 0 = Do not use Cage Window Manager
 run_in_cage=0
+
+# ===== ADVANCED SETTINGS =====
+# Git operation timeout in seconds (default: 300)
+git_timeout=300
+
+# Download retry attempts (default: 3)
+download_max_retries=3

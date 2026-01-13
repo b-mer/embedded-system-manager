@@ -162,12 +162,6 @@ configuration_setup() {
 			fi
 		fi
 
-		if whiptail --title "$SETUP_TITLE" $( [ "${BINARY_UPDATE_CHECK:-0}" -eq 0 ] && echo "--defaultno" ) --yesno "Re-download binary on each boot?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
-			BINARY_UPDATE_CHECK=1
-		else
-			BINARY_UPDATE_CHECK=0
-		fi
-
 		if whiptail --title "$SETUP_TITLE" --yesno "Does this download require authentication?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
 			AUTH_TYPE=$(whiptail --title "$SETUP_TITLE" --menu "Choose authentication type:" 12 60 2 \
 				"token" "Bearer token" \
@@ -234,12 +228,6 @@ configuration_setup() {
 				whiptail --msgbox "Invalid SHA256 checksum format! Must be 64 hexadecimal characters. Proceeding without checksum verification." --title "$SETUP_TITLE" 10 60 < /dev/tty
 				PACKAGE_CHECKSUM=""
 			fi
-		fi
-
-		if whiptail --title "$SETUP_TITLE" $( [ "${PACKAGE_UPDATE_CHECK:-0}" -eq 0 ] && echo "--defaultno" ) --yesno "Re-download package on each boot?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
-			PACKAGE_UPDATE_CHECK=1
-		else
-			PACKAGE_UPDATE_CHECK=0
 		fi
 
 		if whiptail --title "$SETUP_TITLE" --yesno "Does this download require authentication?" 8 50 3>&1 1>&2 2>&3 < /dev/tty; then
@@ -353,7 +341,7 @@ configuration_setup() {
 			fi
 			# Set default if blank
 			if [ -z "$REPO_RUN_COMMAND" ]; then
-				REPO_RUN_COMMAND="source main.sh"
+				REPO_RUN_COMMAND="source main.*"
 				break
 			fi
 			if validate_input "$REPO_RUN_COMMAND" "Repository run command"; then
@@ -410,14 +398,26 @@ configuration_setup() {
 
 	# Turning on/off simple flags
 	STATUS_REFRESH="OFF"; [ "${full_repo_refresh:-0}" -eq 1 ] && STATUS_REFRESH="ON"
-	STATUS_UPDATES="OFF"; [ "${check_for_package_updates:-0}" -eq 1 ] && STATUS_UPDATES="ON"
+	STATUS_APT_UPDATES="OFF"; [ "${check_for_package_updates:-0}" -eq 1 ] && STATUS_APT_UPDATES="ON"
 	STATUS_RUN="OFF"; [ "${run_script:-1}" -eq 1 ] && STATUS_RUN="ON"
+	STATUS_BINARY_UPDATE="OFF"; [ "${BINARY_UPDATE_CHECK:-0}" -eq 1 ] && STATUS_BINARY_UPDATE="ON"
+	STATUS_PACKAGE_UPDATE="OFF"; [ "${PACKAGE_UPDATE_CHECK:-0}" -eq 1 ] && STATUS_PACKAGE_UPDATE="ON"
+
+	# Build dynamic list of options
+	MISC_OPTIONS=()
+	if [ "$DEPLOYMENT_TYPE" = "git" ]; then
+		MISC_OPTIONS+=("FULL_REPO_REFRESH" "Reclone repository on boot instead of git pull" "$STATUS_REFRESH")
+	elif [ "$DEPLOYMENT_TYPE" = "binary" ]; then
+		MISC_OPTIONS+=("BINARY_UPDATE_CHECK" "Re-download binary on each boot" "$STATUS_BINARY_UPDATE")
+	elif [ "$DEPLOYMENT_TYPE" = "package" ]; then
+		MISC_OPTIONS+=("PACKAGE_UPDATE_CHECK" "Re-download package on each boot" "$STATUS_PACKAGE_UPDATE")
+	fi
+	MISC_OPTIONS+=("CHECK_APT_UPDATES" "Check for system (apt) updates on boot" "$STATUS_APT_UPDATES")
+	MISC_OPTIONS+=("RUN_PROGRAM" "Run the deployed program on startup" "$STATUS_RUN")
 
 	choices=$(whiptail --title "$SETUP_TITLE" --checklist \
-		"Choose misc options (space to tick/untick):" 15 110 3 \
-		"FULL_REPO_REFRESH" "Have the repository reclone itself rather than just git pull (git only)." "$STATUS_REFRESH" \
-		"CHECK_UPDATES" "Check for latest updates each boot using apt." "$STATUS_UPDATES" \
-		"RUN_PROGRAM" "Run the deployed program on startup." "$STATUS_RUN" 3>&1 1>&2 2>&3 < /dev/tty)
+		"Choose misc options (space to tick/untick):" 15 110 5 \
+		"${MISC_OPTIONS[@]}" 3>&1 1>&2 2>&3 < /dev/tty)
 	if [ "$?" = 1 ]; then
 		echo "Configuration setup cancelled."
 		exit 1
@@ -425,18 +425,33 @@ configuration_setup() {
 
 	# Convert choices to array safely without eval
 	full_repo_refresh=0
+	BINARY_UPDATE_CHECK=0
+	PACKAGE_UPDATE_CHECK=0
 	check_for_package_updates=0
 	run_script=0
 
-	# Parse the choices string using stable identifiers instead of display text
-	if echo "$choices" | grep -q "FULL_REPO_REFRESH"; then
-		full_repo_refresh=1
-	fi
-	if echo "$choices" | grep -q "CHECK_UPDATES"; then
-		check_for_package_updates=1
-	fi
-	if echo "$choices" | grep -q "RUN_PROGRAM"; then
-		run_script=1
+	# Parse the choices string using stable identifiers
+	if echo "$choices" | grep -q "FULL_REPO_REFRESH"; then full_repo_refresh=1; fi
+	if echo "$choices" | grep -q "BINARY_UPDATE_CHECK"; then BINARY_UPDATE_CHECK=1; fi
+	if echo "$choices" | grep -q "PACKAGE_UPDATE_CHECK"; then PACKAGE_UPDATE_CHECK=1; fi
+	if echo "$choices" | grep -q "CHECK_APT_UPDATES"; then check_for_package_updates=1; fi
+	if echo "$choices" | grep -q "RUN_PROGRAM"; then run_script=1; fi
+
+	# Advanced settings
+	if whiptail --title "$SETUP_TITLE" --yesno "Do you want to configure advanced settings (timeouts, retries)?" 8 60 3>&1 1>&2 2>&3 < /dev/tty; then
+		while true; do
+			GIT_TIMEOUT=$(whiptail --inputbox "Git operation timeout in seconds:" 8 60 --title "$SETUP_TITLE" "$GIT_TIMEOUT" 3>&1 1>&2 2>&3 < /dev/tty)
+			if [ "$?" = 1 ]; then echo "Configuration setup cancelled."; exit 1; fi
+			if [[ "$GIT_TIMEOUT" =~ ^[0-9]+$ ]]; then break; fi
+			whiptail --msgbox "Timeout must be a positive number." 8 40 < /dev/tty
+		done
+		
+		while true; do
+			DOWNLOAD_MAX_RETRIES=$(whiptail --inputbox "Maximum download retry attempts:" 8 60 --title "$SETUP_TITLE" "$DOWNLOAD_MAX_RETRIES" 3>&1 1>&2 2>&3 < /dev/tty)
+			if [ "$?" = 1 ]; then echo "Configuration setup cancelled."; exit 1; fi
+			if [[ "$DOWNLOAD_MAX_RETRIES" =~ ^[0-9]+$ ]]; then break; fi
+			whiptail --msgbox "Retry attempts must be a positive number." 8 40 < /dev/tty
+		done
 	fi
 
 	# Generate paths configuration file
