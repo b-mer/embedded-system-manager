@@ -23,7 +23,6 @@ TTYVTDisallocate=yes
 
 # Environment variables for Wayland/Cage
 Environment="XDG_RUNTIME_DIR=/run/embedded-system-manager"
-Environment="WLR_LIBINPUT_NO_DEVICES=1"
 
 [Install]
 WantedBy=multi-user.target

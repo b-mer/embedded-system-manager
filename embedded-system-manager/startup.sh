@@ -386,6 +386,12 @@ if [ "$run_script" -eq 1 ]; then
     
     # Ensure DISPLAY is unset to avoid Wayland-X11 confusion
     unset DISPLAY
+
+    # Graphics workarounds for Tauri on Raspberry Pi 5
+    export GDK_BACKEND=wayland
+    export WEBKIT_DISABLE_COMPOSITING_MODE=1
+    export WEBKIT_USE_GLDOM=0
+    export WEBKIT_DISABLE_DMABUF_RENDERER=1
     
     # Run the program within Cage
     # Cage will run on the first available TTY
