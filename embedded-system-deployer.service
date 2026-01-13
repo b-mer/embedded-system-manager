@@ -7,7 +7,8 @@ Conflicts=getty@tty1.service
 User=root
 Group=root
 Type=idle
-RuntimeDirectory=wayland
+RuntimeDirectory=embedded-system-manager
+RuntimeDirectoryMode=0700
 ExecStart=/opt/embedded-system-manager/startup.sh
 Restart=on-failure
 RestartSec=10
@@ -21,7 +22,7 @@ TTYVHangup=yes
 TTYVTDisallocate=yes
 
 # Environment variables for Wayland/Cage
-Environment="XDG_RUNTIME_DIR=/run/wayland"
+Environment="XDG_RUNTIME_DIR=/run/embedded-system-manager"
 Environment="WLR_LIBINPUT_NO_DEVICES=1"
 
 [Install]

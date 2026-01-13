@@ -24,7 +24,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Ensure XDG_RUNTIME_DIR is set and exists for Wayland
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/wayland}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/embedded-system-manager}"
 if [ ! -d "$XDG_RUNTIME_DIR" ]; then
   mkdir -p "$XDG_RUNTIME_DIR"
   chmod 700 "$XDG_RUNTIME_DIR"
@@ -59,7 +59,7 @@ install_if_not_exist() {
   fi
 
   if dpkg -s "$1" &>/dev/null; then
-    PKG_EXIST=$(dpkg -s "$1" | grep "install ok installed")
+    PKG_EXIST=$(dpkg -s "$1" | grep "install ok installed" || true)
     if [[ -n "$PKG_EXIST" ]]; then
       return 0
     fi
@@ -88,7 +88,7 @@ clear_display_managers() {
   # Stop all display manager services (more specific patterns to avoid false matches)
   systemctl list-units --type=service --state=running --no-pager --no-legend | \
     awk '{print $1}' | \
-    grep -E '^(gdm|lightdm|sddm|xdm|kdm|lxdm|slim|display-manager)\.service$' | \
+    (grep -E '^(gdm|lightdm|sddm|xdm|kdm|lxdm|slim|display-manager)\.service$' || true) | \
     while read -r service; do
       echo "Stopping $service..."
       systemctl stop "$service" 2>/dev/null || true
@@ -98,7 +98,7 @@ clear_display_managers() {
   # Gracefully terminate X servers using DISPLAY protocol
   # Use find instead of ls for safer file enumeration
   if [ -d /tmp/.X11-unix ]; then
-    find /tmp/.X11-unix -maxdepth 1 -type s -name 'X*' 2>/dev/null | while read -r socket; do
+    (find /tmp/.X11-unix -maxdepth 1 -type s -name 'X*' 2>/dev/null || true) | while read -r socket; do
       display=$(basename "$socket" | sed 's/^X//')
       # Validate display is a number and not empty to prevent dangerous pattern matching
       if [ -n "$display" ] && [[ "$display" =~ ^[0-9]+$ ]] && [ "$display" -ge 0 ] && [ "$display" -le 99 ] 2>/dev/null; then
@@ -125,7 +125,7 @@ clear_display_managers() {
   
   # Gracefully terminate Wayland compositors (more specific patterns)
   # Use find instead of ls for safer enumeration
-  find /run/user -maxdepth 2 -type s -name 'wayland-*' 2>/dev/null | while read -r socket; do
+  (find /run/user -maxdepth 2 -type s -name 'wayland-*' 2>/dev/null || true) | while read -r socket; do
     wayland_display=$(basename "$socket")
     if [ -n "$wayland_display" ] && [[ "$wayland_display" =~ ^wayland-[0-9]+$ ]]; then
       echo "Gracefully terminating Wayland compositor on $wayland_display..."
