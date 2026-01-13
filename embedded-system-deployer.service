@@ -25,6 +25,8 @@ TTYVTDisallocate=yes
 Environment="XDG_RUNTIME_DIR=/run/embedded-system-manager"
 Environment="GTK_CSD=0"
 Environment="GDK_BACKEND=wayland"
+Environment="TAURI_LINUX_DECORATIONS=0"
+Environment="XDG_CURRENT_DESKTOP=Unity"
 
 [Install]
 WantedBy=multi-user.target

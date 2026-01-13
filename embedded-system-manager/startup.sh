@@ -387,12 +387,24 @@ if [ "$run_script" -eq 1 ]; then
     # Ensure DISPLAY is unset to avoid Wayland-X11 confusion
     unset DISPLAY
 
+    # Ensure GTK settings file exists for scorched earth decoration removal
+    mkdir -p /root/.config/gtk-3.0
+    cat <<EOF > /root/.config/gtk-3.0/settings.ini
+[Settings]
+gtk-dialogs-use-header = false
+gtk-header-bar-supported = false
+gtk-shell-shows-desktop = true
+gtk-application-prefer-dark-theme = true
+EOF
+
     # Graphics workarounds for Tauri on Raspberry Pi 5
     export GDK_BACKEND=wayland
     export GDK_CORE_DEVICE_EVENTS=1
     export GTK_CSD=0
     export GTK_OVERLAY_SCROLLING=0
     export GDK_GL=gles
+    export CLUTTER_BACKEND=wayland
+    export SDL_VIDEODRIVER=wayland
     export WEBKIT_DISABLE_COMPOSITING_MODE=1
     export WEBKIT_USE_GLDOM=0
     export WEBKIT_DISABLE_DMABUF_RENDERER=1
@@ -404,7 +416,7 @@ if [ "$run_script" -eq 1 ]; then
     
     # Run the program within Cage
     # Cage will run on the first available TTY
-    if ! cage -- bash -c "$RUN_COMMAND"; then
+    if ! cage -- bash -c "export GTK_CSD=0; export GDK_BACKEND=wayland; export TAURI_LINUX_DECORATIONS=0; export XDG_CURRENT_DESKTOP=Unity; $RUN_COMMAND"; then
       echo "ERROR: Failed to execute command in Cage: $RUN_COMMAND"
       exit 1
     fi
