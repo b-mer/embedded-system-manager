@@ -1,23 +1,27 @@
 [Unit]
 Description=Embedded System Deployer (from embedded-system-manager: https://github.com/b-mer/embedded-system-manager)
 After=network.target systemd-user-sessions.service
+Conflicts=getty@tty1.service
 
 [Service]
 User=root
 Group=root
-Type=simple
+Type=idle
+RuntimeDirectory=wayland
 ExecStart=/opt/embedded-system-manager/startup.sh
 Restart=on-failure
 RestartSec=10
+IgnoreSIGHUP=yes
 StandardInput=tty
 StandardOutput=journal
 StandardError=journal
 TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
+TTYVTDisallocate=yes
 
 # Environment variables for Wayland/Cage
-Environment="XDG_RUNTIME_DIR=/run/user/0"
+Environment="XDG_RUNTIME_DIR=/run/wayland"
 Environment="WLR_LIBINPUT_NO_DEVICES=1"
 
 [Install]

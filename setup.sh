@@ -87,6 +87,7 @@ echo "Copying systemd embedded-system-deployer.service file to /etc/systemd/syst
 
 # Installing embedded-system-deployer systemd service
 cp -f embedded-system-deployer.service /etc/systemd/system
+systemctl daemon-reload
 
 echo "Setting appropriate permissions for embedded-system-deployer.service..."
 

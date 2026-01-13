@@ -23,6 +23,13 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+# Ensure XDG_RUNTIME_DIR is set and exists for Wayland
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/wayland}"
+if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+  mkdir -p "$XDG_RUNTIME_DIR"
+  chmod 700 "$XDG_RUNTIME_DIR"
+fi
+
 # Run in location of script
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -47,6 +54,10 @@ fi
 
 # Install if not exist function yoinked from stack exchange at https://codereview.stackexchange.com/questions/262937/installing-packages-if-they-dont-exist-in-bash
 install_if_not_exist() {
+  if command -v "$1" &>/dev/null; then
+    return 0
+  fi
+
   if dpkg -s "$1" &>/dev/null; then
     PKG_EXIST=$(dpkg -s "$1" | grep "install ok installed")
     if [[ -n "$PKG_EXIST" ]]; then
@@ -55,11 +66,9 @@ install_if_not_exist() {
   fi
 
   echo "Package $1 missing. Updating package lists..."
-  if ! apt-get update; then
-    echo "WARNING: apt-get update failed. Attempting to install $1 anyway..."
-  fi
+  apt-get update --quiet || true
 
-  if apt-get install "$1" -y; then
+  if apt-get install "$1" -y -q; then
     return 0
   else
     echo "ERROR: Failed to install package: $1"
@@ -71,6 +80,10 @@ install_if_not_exist() {
 # This function gracefully terminates X11 and Wayland sessions before forcing
 clear_display_managers() {
   echo "--- STOPPING CONFLICTING DISPLAY MANAGERS ---"
+
+  # Explicitly stop LightDM and Getty on TTY1 as they are common on Raspberry Pi
+  systemctl stop lightdm 2>/dev/null || true
+  systemctl stop getty@tty1.service 2>/dev/null || true
   
   # Stop all display manager services (more specific patterns to avoid false matches)
   systemctl list-units --type=service --state=running --no-pager --no-legend | \
@@ -152,8 +165,6 @@ clear_display_managers() {
   fi
 }
 
-install_if_not_exist git
-
 # Validate configuration based on deployment type
 validate_config() {
   echo "Validating configuration..."
@@ -220,6 +231,14 @@ if ! source config; then
   exit 1
 fi
 
+# Clear display managers early if running in cage to ensure we own the TTY
+if [ "${run_in_cage:-0}" -eq 1 ]; then
+  clear_display_managers
+fi
+
+# Git is required for some deployments
+install_if_not_exist git
+
 # Load paths configuration if it exists
 if [ -f paths.conf ]; then
   source paths.conf
@@ -269,9 +288,6 @@ if [ "$run_in_cage" -eq 1 ]; then
     echo "ERROR: Failed to install wlroots."
     exit 1
   fi
-  
-  # Clear any existing display managers/compositors
-  clear_display_managers
 fi
 
 echo "--- CHECKING FOR UPGRADES ---"
@@ -371,6 +387,10 @@ if [ "$run_script" -eq 1 ]; then
   # Check if we should run in Cage
   if [ "$run_in_cage" -eq 1 ]; then
     echo "Starting Cage Kiosk..."
+    
+    # Ensure DISPLAY is unset to avoid Wayland-X11 confusion
+    unset DISPLAY
+    
     # Run the program within Cage
     # Cage will run on the first available TTY
     if ! cage -- bash -c "$RUN_COMMAND"; then
