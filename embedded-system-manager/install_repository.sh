@@ -83,9 +83,20 @@ else
 		fi
 	fi
 	
-	# Check if repository is in detached HEAD state
-	if ! git -C "$script_workspace" symbolic-ref HEAD >/dev/null 2>&1; then
-		echo "WARNING: Repository is in detached HEAD state. Attempting to fix..."
+	# Check for branch mismatch or detached HEAD
+	current_branch=$(git -C "$script_workspace" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "DETACHED")
+	
+	needs_checkout=false
+	if [ "$current_branch" = "HEAD" ] || [ "$current_branch" = "DETACHED" ]; then
+		echo "WARNING: Repository is in detached HEAD state."
+		needs_checkout=true
+	elif [ -n "$repository_branch" ] && [ "$current_branch" != "$repository_branch" ]; then
+		echo "Branch mismatch detected (current: $current_branch, configured: $repository_branch)."
+		needs_checkout=true
+	fi
+
+	if [ "$needs_checkout" = true ]; then
+		echo "Attempting to checkout correct branch..."
 		# Try to checkout the configured branch or default branch
 		checkout_success=false
 		if [ -n "$repository_branch" ]; then
@@ -118,9 +129,13 @@ else
 		fi
 		
 		if [ "$checkout_success" = false ]; then
-			echo "ERROR: Failed to recover from detached HEAD state."
-			echo "Please delete $script_workspace and run setup again, or enable full_repo_refresh."
-			exit 1
+			if [ "$current_branch" = "HEAD" ] || [ "$current_branch" = "DETACHED" ]; then
+				echo "ERROR: Failed to recover from detached HEAD state."
+				echo "Please delete $script_workspace and run setup again, or enable full_repo_refresh."
+				exit 1
+			else
+				echo "WARNING: Failed to switch to branch '$repository_branch'. Staying on '$current_branch'."
+			fi
 		fi
 	fi
 	

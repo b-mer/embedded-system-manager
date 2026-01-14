@@ -53,8 +53,13 @@ if [ -d "/opt/embedded-system-manager" ]; then
     INSTALLED_VERSION="unknown"
     [ -f "/opt/embedded-system-manager/VERSION" ] && INSTALLED_VERSION=$(cat "/opt/embedded-system-manager/VERSION")
     
+    CHANGELOG=""
+    if [ -f "$SCRIPT_DIR/CHANGELOG" ]; then
+        CHANGELOG="\n\nWhat's New:\n$(cat "$SCRIPT_DIR/CHANGELOG")"
+    fi
+
     if ! CHOICE=$(whiptail --title "Existing Installation Found" --menu \
-        "An existing installation was found at /opt/embedded-system-manager.\n\nInstalled Version: $INSTALLED_VERSION\nNew Version: $NEW_VERSION\n\nPlease choose an option:" 15 65 2 \
+        "An existing installation was found at /opt/embedded-system-manager.\n\nInstalled Version: $INSTALLED_VERSION\nNew Version: $NEW_VERSION$CHANGELOG\n\nPlease choose an option:" 20 75 2 \
         "Update" "Preserve existing configuration and paths" \
         "Reinstall" "Start fresh (this will overwrite your configuration)" 3>&1 1>&2 2>&3 < /dev/tty); then
         echo "Setup cancelled."
@@ -112,8 +117,9 @@ if [ "$INSTALL_MODE" = "update" ]; then
     [ -f /tmp/edman_paths_bak ] && mv /tmp/edman_paths_bak "/opt/embedded-system-manager/paths.conf"
 fi
 
-# Always copy the new VERSION file to /opt/embedded-system-manager
+# Always copy the new VERSION and CHANGELOG file to /opt/embedded-system-manager
 cp "$SCRIPT_DIR/VERSION" /opt/embedded-system-manager/VERSION
+[ -f "$SCRIPT_DIR/CHANGELOG" ] && cp "$SCRIPT_DIR/CHANGELOG" /opt/embedded-system-manager/CHANGELOG
 
 # Get rid of windows /r newlines to prevent bugs
 sed -i 's/\r$//' /opt/embedded-system-manager/*
