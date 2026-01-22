@@ -1,3 +1,8 @@
+1.1.1:
+- Fixed .deb package installation to use system temp directory instead of creating unnecessary script_workspace.
+- Improved .deb package tracking using dpkg instead of workspace file checks.
+- Disabled gsettings call in Cage mode to prevent D-Bus errors on Wayland-only systems.
+
 1.1.0:
 - Added support for automatic branch switching when repository configuration changes.
 - Improved repository health checks and error recovery.

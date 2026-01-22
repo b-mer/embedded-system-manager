@@ -23,10 +23,16 @@ if [ "$(id -u)" -ne 0 ]; then
 	exit 1
 fi
 
-# Create workspace directory if it doesn't exist
-mkdir -p "$script_workspace"
+# Package name cache directory
+CACHE_DIR="/var/lib/embedded-system-manager"
+PACKAGE_CACHE="$CACHE_DIR/installed-package-name"
 
-TEMP_PACKAGE=$(mktemp "$script_workspace/.package.XXXXXX")
+# Create cache directory if it doesn't exist
+mkdir -p "$CACHE_DIR" 2>/dev/null || true
+
+# Use system temp directory for .deb downloads (packages install to system locations)
+# No need to create script_workspace for .deb packages
+TEMP_PACKAGE=$(mktemp "/tmp/XXXXXX.deb")
 
 # Cleanup function for temporary files
 cleanup() {
@@ -60,13 +66,57 @@ verify_checksum() {
 	fi
 }
 
+# Extract package name from .deb file
+get_package_name() {
+	local package_file="$1"
+	dpkg-deb -f "$package_file" Package 2>/dev/null || echo ""
+}
+
+# Extract package name from URL (fallback when .deb file not available)
+get_package_name_from_url() {
+	local url="$1"
+	local filename=$(basename "$url" .deb)
+	
+	# Try Debian naming convention: packagename_version_arch.deb
+	if [[ "$filename" =~ ^([a-z0-9][a-z0-9+.-]+)_[0-9] ]]; then
+		echo "${BASH_REMATCH[1]}"
+		return 0
+	fi
+	
+	# Fallback: strip common version/arch suffixes
+	# Handles cases like: myapp-v2.0-amd64, myapp-1.2.3, etc.
+	echo "$filename" | sed -E 's/[-_](v?[0-9]+\.[0-9]+[^-_]*|amd64|arm64|armhf|i386|all)$//g' | sed -E 's/[-_](v?[0-9]+\.[0-9]+[^-_]*)$//g'
+}
+
+# Check if a .deb package is installed
+is_package_installed() {
+	local package_name="$1"
+	if [ -z "$package_name" ]; then
+		return 1
+	fi
+	
+	# Validate package name format (Debian Policy compliant)
+	if ! [[ "$package_name" =~ ^[a-z0-9][a-z0-9+.-]*$ ]]; then
+		return 1
+	fi
+	
+	dpkg -l "$package_name" 2>/dev/null | grep -q "^ii"
+}
+
 # Install .deb package
 install_deb_package() {
 	local package_file="$1"
+	local package_name="$2"
 	
 	echo "Installing .deb package..."
 	if dpkg -i "$package_file"; then
 		echo "Package installed successfully."
+		
+		# Cache the package name for future update checks
+		if [ -n "$package_name" ]; then
+			echo "$package_name" > "$PACKAGE_CACHE" 2>/dev/null || true
+		fi
+		
 		return 0
 	else
 		echo "ERROR: Failed to install .deb package."
@@ -134,11 +184,25 @@ download_package() {
 
 # Check if package needs updating
 needs_update() {
-	# If update check is disabled and we have files in workspace, skip
-	if [ "$package_update_check" -eq 0 ] && [ "$(ls -A "$script_workspace" 2>/dev/null)" ]; then
-		return 1
+	# If update check is disabled, check if package is already installed
+	if [ "$package_update_check" -eq 0 ]; then
+		# First, check the cache for previously installed package name
+		if [ -f "$PACKAGE_CACHE" ]; then
+			local cached_package_name=$(cat "$PACKAGE_CACHE" 2>/dev/null)
+			if [ -n "$cached_package_name" ] && is_package_installed "$cached_package_name"; then
+				echo "Package $cached_package_name is already installed (from cache). Skipping download."
+				return 1  # Package installed, skip update
+			fi
+		fi
+		
+		# Fallback: Try to extract package name from URL
+		local package_name_from_url=$(get_package_name_from_url "$package_url")
+		if is_package_installed "$package_name_from_url"; then
+			echo "Package $package_name_from_url is already installed. Skipping download."
+			return 1  # Package installed, skip update
+		fi
 	fi
-	return 0
+	return 0  # Proceed with download/install
 }
 
 # Main logic
@@ -146,14 +210,18 @@ if needs_update; then
 	if download_package; then
 		# Detect package type from URL or file
 		if [[ "$package_url" == *.deb ]] || file "$TEMP_PACKAGE" | grep -q "Debian binary package"; then
-			if install_deb_package "$TEMP_PACKAGE"; then
+			# Extract package name before installation
+			PACKAGE_NAME=$(get_package_name "$TEMP_PACKAGE")
+			
+			if install_deb_package "$TEMP_PACKAGE" "$PACKAGE_NAME"; then
 				echo "Package installation complete."
 				rm -f "$TEMP_PACKAGE"
 			else
 				echo "ERROR: Package installation failed."
 				rm -f "$TEMP_PACKAGE"
-				if [ "$(ls -A "$script_workspace" 2>/dev/null)" ]; then
-					echo "Keeping existing installation."
+				# Check if package is already installed (fallback to existing installation)
+				if [ -n "$PACKAGE_NAME" ] && is_package_installed "$PACKAGE_NAME"; then
+					echo "Keeping existing installation of $PACKAGE_NAME."
 				else
 					exit 1
 				fi
@@ -165,8 +233,10 @@ if needs_update; then
 		fi
 	else
 		echo "ERROR: Package download failed."
-		if [ "$(ls -A "$script_workspace" 2>/dev/null)" ]; then
-			echo "Keeping existing installation."
+		# Check if a version of the package is already installed
+		local package_name_from_url=$(get_package_name_from_url "$package_url")
+		if is_package_installed "$package_name_from_url"; then
+			echo "Keeping existing installation of $package_name_from_url."
 		else
 			exit 1
 		fi

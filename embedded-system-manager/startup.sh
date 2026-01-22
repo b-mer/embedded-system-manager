@@ -418,9 +418,11 @@ EOF
       export WEBKIT_DISABLE_DMABUF_RENDERER=1
     fi
 
-    if command -v gsettings &>/dev/null; then
-      gsettings set org.gnome.desktop.wm.preferences button-layout '' || true
-    fi
+    # Disabled: gsettings requires D-Bus which may not be available in Cage
+    # The GTK_CSD=0 environment variable (set below) should handle decoration removal
+    # if command -v gsettings &>/dev/null; then
+    #   gsettings set org.gnome.desktop.wm.preferences button-layout '' || true
+    # fi
     
     # Run the program within Cage
     # Cage will run on the first available TTY
