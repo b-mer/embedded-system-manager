@@ -26,6 +26,7 @@ Environment="XDG_RUNTIME_DIR=/run/embedded-system-manager"
 Environment="GTK_CSD=0"
 Environment="GDK_BACKEND=wayland"
 Environment="XDG_CURRENT_DESKTOP=Unity"
+Environment="LIBSEAT_BACKEND=builtin"
 
 [Install]
 WantedBy=multi-user.target

@@ -1,3 +1,6 @@
+1.1.2:
+- Fixed libseat/logind error in Cage mode by setting LIBSEAT_BACKEND=builtin for root services.
+
 1.1.1:
 - Fixed .deb package installation to use system temp directory instead of creating unnecessary script_workspace.
 - Improved .deb package tracking using dpkg instead of workspace file checks.
